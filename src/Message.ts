@@ -1,6 +1,7 @@
-interface Message {
-    time: Date;
-    message: string;
-}
 
-export default Message;
+export default interface Message {
+    person: number;
+    threadid: number;
+    message: string;
+    timestamp: number;
+}

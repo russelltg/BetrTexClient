@@ -1,8 +1,14 @@
 import Message from './Message';
 
-interface Conversation {
-    phoneNumber: string;
-    messages: Message[];
+export default interface ConversationData {
+    threadid: number;
+    messagecount: number;
+    snippet: string;
+    addresses: Array<number>;
+    read: Boolean;
 }
 
-export default Conversation;
+export default interface Conversation {
+    data: ConversationData;
+    messages: Message[];
+}
