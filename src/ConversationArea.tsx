@@ -3,7 +3,8 @@ import ConversationData from './Conversation';
 import MessageArea from './MessageArea';
 import Message from './Message';
 import WsConnection from './WsConnection';
-import ContactInfo from './ContactInfo';
+import { Input, IconButton, Divider, FormControl } from 'material-ui';
+import SendIcon from 'material-ui-icons/Send';
 
 interface ConversationAreaProps {
     conversation: ConversationData;
@@ -12,30 +13,17 @@ interface ConversationAreaProps {
 
 interface ConversationAreaState {
     message: string;
-    contactInfos: ContactInfo[];
     messages: Message[];
 }
 
 class ConversationArea extends React.Component<ConversationAreaProps, ConversationAreaState> {
 
+    bottom: HTMLDivElement;
+
     constructor(props: ConversationAreaProps) {
         super(props);
 
-        this.state = {message: '', contactInfos: [], messages: []};
-
-        // TODO: do more than the first one
-
-        var running: ContactInfo[] = [];
-
-        this.props.conversation.addresses.map((addr: number) => {
-            this.props.connection.contactInfo(addr, (info: ContactInfo) => {
-                running.push(info);
-
-                if (running.length === this.props.conversation.addresses.length) {
-                    this.setState({contactInfos: running});
-                }
-            });
-        });
+        this.state = {message: '',  messages: []};
 
         this.props.connection.getMessages(this.props.conversation.threadid, (messages: Message[]) => {
             this.setState({messages: messages});
@@ -51,38 +39,37 @@ class ConversationArea extends React.Component<ConversationAreaProps, Conversati
         this.setState({message: evt.target.value});
     }
 
-    render() {
+    componentDidMount() {
+        this.bottom.scrollIntoView();
+    }
 
-        const unreadStle: React.CSSProperties = {
-            fontWeight: 'bold'
-        };
-        const readStyle: React.CSSProperties = {
-            fontWeight: 'normal'
-        };
+    render() {
 
         return  (
           <div>
-            <h2>{this.state.contactInfos.map((info: ContactInfo, id: number) => {
-                return <div key={id}>
-                    <div>{info.name}: {info.number}</div>
-                    <img src={info.b64_image} />
+            <div style={{overflowY: 'scroll', height: 'calc(100% - 50px)', width: '100%', position: 'absolute'}}>
+                {this.state.messages.map((message: Message, i: number) => (
+                    <div key={i}>
+                        <MessageArea 
+                            message={message}
+                            connection={this.props.connection}
+                        />
                     </div>
-                    ;
-            })}</h2>
-            <div style={this.props.conversation.read ? readStyle : unreadStle}>
-                {this.props.conversation.snippet}
+                ))}
+                <div ref={(e1) => { if (e1) {this.bottom = e1; } }} />
             </div>
-            {this.state.messages.map((message: Message, i: number) => (
-                <div>
-                    <MessageArea 
-                        key={i}
-                        message={message}
-                        connection={this.props.connection}
-                    />
-                </div>
-            ))}
-            <input type="text" onChange={this.handleTextChange} />
-            <button onClick={this.sendMessage} >Send</button>
+            <Divider light={true} />
+            <FormControl fullWidth={true} style={{position: 'absolute', bottom: 0}}>
+                <Input
+                    placeholder="Type a message..."
+                    onChange={this.handleTextChange}
+                    endAdornment={
+                        <IconButton onClick={this.sendMessage}>
+                            <SendIcon />
+                        </IconButton>}
+                />
+                
+            </FormControl>
         </div>
         );
     }

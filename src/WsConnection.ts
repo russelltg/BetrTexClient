@@ -30,10 +30,10 @@ class WsConnection {
         this.contactCache = new Map<number, ContactInfo>();
         this.socket = new WebSocket('ws://' + ip + ':' + String(port));
 
-
         this.socket.addEventListener('message', (evt: MessageEvent) => {
             const message = JSON.parse(String(evt.data)) as RpcMessage;
 
+            // tslint:disable-next-line:no-any
             var resp = message as RpcResponse<any>;
             if (resp && this.waitingIDs.has(message.id)) {
                 
@@ -41,8 +41,10 @@ class WsConnection {
                 if (callback) {
                     callback(JSON.stringify(resp.result));
                 }
+                this.waitingIDs.delete(message.id);
             }
 
+            // tslint:disable-next-line:no-any
             var req = message as RpcRequest<any>;
             if (req) {
 
@@ -97,7 +99,10 @@ class WsConnection {
         const thisID = this.nextID++;
 
         this.waitingIDs.set(thisID, (result: string) => {
-            onreturn(JSON.parse(result) as T);
+            let parsed = JSON.parse(result);
+            if ((parsed as T) !== undefined) {
+                onreturn(parsed as T);
+            }
         });
 
         // start the request

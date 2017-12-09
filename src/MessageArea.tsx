@@ -2,6 +2,7 @@ import * as React from 'react';
 import Message from './Message';
 import ContactInfo from './ContactInfo';
 import WsConnection from './WsConnection';
+import { Chip, Avatar } from 'material-ui';
 
 interface MessageAreaParams {
     message: Message;
@@ -31,9 +32,10 @@ export default class MessageArea extends React.Component<MessageAreaParams, Mess
     render() {
         return (
         <div>
-            <span>{new Date(this.props.message.timestamp).toString()}</span>;
-            <span>{this.state.info.name}</span>
-            <span>{this.props.message.message}</span>
+            <Chip 
+                avatar={<Avatar>{this.state.info.name === undefined || this.state.info.name.length === 0 ? ' ' : this.state.info.name[0]}</Avatar>}
+                label={this.props.message.message}
+            />
         </div>);
     }
 
