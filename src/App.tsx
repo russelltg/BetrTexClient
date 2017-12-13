@@ -36,7 +36,8 @@ export default class App extends React.Component<any, AppState> {
     super(props);
 
     this.areas = new Map<number, JSX.Element>();
-    this.connection = new WsConnection('10.0.0.9', 14563);
+
+    this.connection = new WsConnection(this.props.ip, this.props.port);
 
     // fetch the conversations
     this.connection.listConversations((datas: ConversationData[]) => {
@@ -87,7 +88,6 @@ export default class App extends React.Component<any, AppState> {
   }
 
   render() {
-
     const conversationArea = this.conversationArea(this.state.currentThread);
 
     return (
