@@ -1,8 +1,8 @@
 import * as React from 'react';
-import WsConnection from './WsConnection';
-import ConversationData from './Conversation';
-import { ListItem, Avatar, ListItemText } from 'material-ui';
-import ContactInfo from './ContactInfo';
+import { WsConnection } from './WsConnection';
+import { ConversationData } from './Conversation';
+import { ListItem, ListItemText } from 'material-ui';
+import PersonAvatar from './PersonAvatar';
 
 interface ConversationListItemProps {
     connection: WsConnection;
@@ -11,45 +11,36 @@ interface ConversationListItemProps {
 }
 
 interface ConversationListItemState {
-    infos: ContactInfo[];
+    names: string[];
+    images: string[];
 }
 
-export default class ConversationListItem extends 
+export default class ConversationListItem extends
     React.Component<ConversationListItemProps, ConversationListItemState> {
 
     constructor(props: ConversationListItemProps) {
         super(props);
 
-        this.state = {infos: []};
+        this.state = {
+            names: this.props.data.people.map(num => {
+                return num.number;
+            }),
+            images: new Array<string>(this.props.data.people.length)
+        };
 
-        for (const num of this.props.data.addresses) {
-            this.props.connection.contactInfo(num, (info: ContactInfo) => {
-                this.setState({infos: [...this.state.infos, info]});
+        this.props.data.people.forEach((person, id) => {
+            this.props.connection.contactInfo(person.contactid, info => {
+                var names = this.state.names.slice();
+                var images = this.state.images.slice();
+
+                names[id] = info.name;
+                images[id] = info.b64_image;
+
+                this.setState({names: names, images: images});
+
             });
-        }
+        });
 
-    }
-
-    initials = (name: string) => {
-        if (name.length === 0) {
-            return '';
-        }
-
-        var initals = name[0];
-
-        var idx = name.indexOf(' ');
-        if (idx !== -1 && idx + 1 < name.length) {
-            initals += name[idx + 1];
-        }
-        return initals;
-    }
-
-    avatar = (info: ContactInfo) => {
-        if (info.b64_image !== '') {
-            return <Avatar alt={this.initials(info.name)} src={info.b64_image} />;
-        } else {
-            return <Avatar>{this.initials(info.name)}</Avatar>;
-        }
     }
 
     onClickCallback = () => {
@@ -59,25 +50,19 @@ export default class ConversationListItem extends
     render() {
 
         // TODO: figure out what avatar to show when multiple
-        var avatarElement = <div />;
-
-        if (this.state.infos.length !== 0) {
-            avatarElement = this.avatar(this.state.infos[0]);
-        }
-
         // get comma separated names
         var names = '';
-        this.state.infos.forEach(element => {
-            names += (element.name === '' ? element.number : element.name) + ', ';
+        this.state.names.forEach((element, i) => {
+            names += (element === '' ? this.props.data.people[i].number : element) + ', ';
         });
-        names = names.substr(0, names.length - 2); // remove last ', '
+        names = names.substr(0, Math.max(0, names.length - 2)); // remove last ', '
 
         return (
             <ListItem button={true} onClick={this.onClickCallback}>
-                {avatarElement}
-                <ListItemText 
-                    primary={names} 
-                    secondary={this.props.data.snippet}
+                <PersonAvatar info={{name: this.state.names[0], b64_image: this.state.images[0]}} />
+                <ListItemText
+                    primary={names}
+                    secondary={this.props   .data.snippet}
                 />
             </ListItem>
         );

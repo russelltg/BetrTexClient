@@ -1,6 +1,7 @@
 
-export default interface ContactInfo {
+interface ContactInfo {
     name: string;
     b64_image: string;
-    number: string;
 }
+
+export { ContactInfo };

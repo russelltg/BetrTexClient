@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { List, Divider } from 'material-ui';
-import ConversationData from './Conversation';
-import WsConnection from './WsConnection';
+import { ConversationData } from './Conversation';
+import { WsConnection } from './WsConnection';
 import ConversationListItem from './ConversationListItem';
 
 interface ConversationsListProps {
@@ -10,7 +10,7 @@ interface ConversationsListProps {
     onSelect: (threadID: number) => void;
 }
 
-export default class ConversationsList extends React.Component<ConversationsListProps, {}> {
+class ConversationsList extends React.Component<ConversationsListProps, {}> {
 
     constructor(props: ConversationsListProps) {
         super(props);
@@ -27,9 +27,9 @@ export default class ConversationsList extends React.Component<ConversationsList
                         return (
                             <span key={i}>
                                 <ConversationListItem
-                                    onSelect={this.props.onSelect} 
-                                    connection={this.props.connection} 
-                                    data={info} 
+                                    onSelect={this.props.onSelect}
+                                    connection={this.props.connection}
+                                    data={info}
                                 />
                                 <Divider light={true}/>
                             </span>
@@ -41,3 +41,5 @@ export default class ConversationsList extends React.Component<ConversationsList
     }
 
 }
+
+export { ConversationsList };

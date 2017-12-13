@@ -1,6 +1,6 @@
-import ConversationData from './Conversation';
-import Message from './Message';
-import ContactInfo from './ContactInfo';
+import { ConversationData } from './Conversation';
+import { Message } from './Message';
+import { ContactInfo } from './ContactInfo';
 
 interface RpcMessage {
     id: number;
@@ -24,10 +24,13 @@ class WsConnection {
     private messageQueue: string[];
     private contactCache: Map<number, ContactInfo>;
 
-    constructor (ip: string, port: number, textHandler: (message: Message) => void) {
+    private messageHandler: Map<number, (message: Message) => void>;
+
+    constructor (ip: string, port: number) {
         this.waitingIDs = new Map<number, (message: string) => void>();
         this.messageQueue = [];
         this.contactCache = new Map<number, ContactInfo>();
+        this.messageHandler = new Map<number, (message: Message) => void>();
         this.socket = new WebSocket('ws://' + ip + ':' + String(port));
 
         this.socket.addEventListener('message', (evt: MessageEvent) => {
@@ -36,12 +39,14 @@ class WsConnection {
             // tslint:disable-next-line:no-any
             var resp = message as RpcResponse<any>;
             if (resp && this.waitingIDs.has(message.id)) {
-                
+
                 var callback = this.waitingIDs.get(message.id);
                 if (callback) {
                     callback(JSON.stringify(resp.result));
                 }
                 this.waitingIDs.delete(message.id);
+
+                return;
             }
 
             // tslint:disable-next-line:no-any
@@ -49,12 +54,17 @@ class WsConnection {
             if (req) {
 
                 if (req.method === 'text-received') {
-                    textHandler(req.params as Message);
+                    const msg = req.params as Message;
+                    const handler = this.messageHandler.get(msg.threadid);
+                    if (handler) {
+                        handler(msg);
+                    }
+
                 }
             }
 
         });
-        
+
         this.socket.addEventListener('open', (ev: Event) => {
             // send message queue
             this.messageQueue.forEach(msg => {
@@ -63,28 +73,42 @@ class WsConnection {
         });
     }
 
+    registerThreadID(threadid: number, onnewmessage: (msg: Message) => void) {
+        this.messageHandler.set(threadid, onnewmessage);
+    }
+
     listConversations(onreturn: (message: ConversationData[]) => void) {
         this.performRequest('list-conversations', {}, onreturn);
     }
 
-    sendText(message: string, people: number[]) {
+    sendText(message: string, people: string[], threadid: number) {
         this.performRequest('send-text', {
-            to: people,
+            thread: threadid,
+            numbers: people,
             message: message
         },                  (a: {}) => { return {}; });
     }
 
-    contactInfo(canonAddr: number, onreturn: (info: ContactInfo) => void) {
+    contactInfo(contactID: number, onreturn: (info: ContactInfo) => void) {
 
-        if (this.contactCache.has(canonAddr)) {
-            const cachedEntry = this.contactCache.get(canonAddr);
-            if (cachedEntry) {
-                onreturn(cachedEntry);
-            }
+        // if (this.contactCache.has(contactID)) {
+        //     const cachedEntry = this.contactCache.get(contactID);
+        //     if (cachedEntry) {
+        //         onreturn(cachedEntry);
+        //         return;
+        //     }
+        // }
+
+        if (contactID === 0) {
+            onreturn({
+                name: 'Me',
+                b64_image: ''
+            });
+            return;
         }
 
-        this.performRequest('contact-info', canonAddr, (info: ContactInfo) => {
-            this.contactCache.set(canonAddr, info);
+        this.performRequest('contact-info', contactID, (info: ContactInfo) => {
+            this.contactCache.set(contactID, info);
 
             onreturn(info);
         });
@@ -95,7 +119,7 @@ class WsConnection {
     }
 
     private performRequest<T, U>(method: string, params: U, onreturn: (message: T) => void) {
-        
+
         const thisID = this.nextID++;
 
         this.waitingIDs.set(thisID, (result: string) => {
@@ -123,4 +147,4 @@ class WsConnection {
 
 }
 
-export default WsConnection;
+export { WsConnection };

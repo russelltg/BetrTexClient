@@ -1,14 +1,15 @@
 import * as React from 'react';
-import ConversationData from './Conversation';
-import MessageArea from './MessageArea';
-import Message from './Message';
-import WsConnection from './WsConnection';
+import { ConversationData } from './Conversation';
+import MessageArea from  './MessageArea';
+import { Message } from './Message';
+import { WsConnection } from './WsConnection';
 import { Input, IconButton, Divider, FormControl } from 'material-ui';
 import SendIcon from 'material-ui-icons/Send';
 
 interface ConversationAreaProps {
     conversation: ConversationData;
     connection: WsConnection;
+    style: React.CSSProperties;
 }
 
 interface ConversationAreaState {
@@ -27,16 +28,35 @@ class ConversationArea extends React.Component<ConversationAreaProps, Conversati
 
         this.props.connection.getMessages(this.props.conversation.threadid, (messages: Message[]) => {
             this.setState({messages: messages});
+
+            this.bottom.scrollIntoView();
+        });
+
+        this.props.connection.registerThreadID(this.props.conversation.threadid, (message: Message) => {
+            this.setState({messages: [...this.state.messages, message]});
+
+            this.bottom.scrollIntoView();
         });
 
     }
 
     sendMessage = () => {
-        this.props.connection.sendText(this.state.message, this.props.conversation.addresses);
+        // clear box
+        this.setState({message: ''});
+
+        this.props.connection.sendText(this.state.message, this.props.conversation.people.map((it) => {
+            return it.number;
+        }),                            this.props.conversation.threadid);
     }
 
     handleTextChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
         this.setState({message: evt.target.value});
+    }
+
+    handleKeyUp = (evt: React.KeyboardEvent<HTMLInputElement>) => {
+        if (evt.key === 'Enter') {
+            this.sendMessage();
+        }
     }
 
     componentDidMount() {
@@ -45,34 +65,48 @@ class ConversationArea extends React.Component<ConversationAreaProps, Conversati
 
     render() {
 
+        const messagesStyling: React.CSSProperties = {
+            boxSizing: 'border-box',
+            paddingLeft: 20,
+            overflowY: 'scroll',
+            position: 'absolute',
+            height: 'calc(100% - 50px)',
+            width: 'calc(100%)',
+        };
+
         return  (
-          <div>
-            <div style={{overflowY: 'scroll', height: 'calc(100% - 50px)', width: '100%', position: 'absolute'}}>
+          <div style={this.props.style}>
+                <div style={messagesStyling}>
                 {this.state.messages.map((message: Message, i: number) => (
                     <div key={i}>
-                        <MessageArea 
+                        <MessageArea
                             message={message}
                             connection={this.props.connection}
                         />
                     </div>
                 ))}
-                <div ref={(e1) => { if (e1) {this.bottom = e1; } }} />
+                <div style={{ float: 'left', clear: 'both' }}  ref={(e1) => { if (e1) {this.bottom = e1; } }} />
             </div>
             <Divider light={true} />
-            <FormControl fullWidth={true} style={{position: 'absolute', bottom: 0}}>
+            <FormControl
+                fullWidth={true}
+                style={{position: 'absolute', bottom: 0, boxSizing: 'border-box', paddingLeft: 20, paddingBottom: 5}}
+            >
                 <Input
+                    onKeyUp={this.handleKeyUp}
                     placeholder="Type a message..."
                     onChange={this.handleTextChange}
+                    value={this.state.message}
                     endAdornment={
                         <IconButton onClick={this.sendMessage}>
                             <SendIcon />
                         </IconButton>}
                 />
-                
+
             </FormControl>
         </div>
         );
     }
 }
 
-export default ConversationArea;
+export { ConversationArea };

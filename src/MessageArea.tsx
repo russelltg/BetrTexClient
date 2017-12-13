@@ -1,8 +1,9 @@
 import * as React from 'react';
-import Message from './Message';
-import ContactInfo from './ContactInfo';
-import WsConnection from './WsConnection';
-import { Chip, Avatar } from 'material-ui';
+import { Message, MmsData, SmsData } from './Message';
+import { ContactInfo } from './ContactInfo';
+import { WsConnection } from './WsConnection';
+import { Card, CardContent, Typography } from 'material-ui';
+import PersonAvatar from './PersonAvatar';
 
 interface MessageAreaParams {
     message: Message;
@@ -20,23 +21,44 @@ export default class MessageArea extends React.Component<MessageAreaParams, Mess
 
         this.state = {info: {
             name: '',
-            b64_image: '',
-            number: '',
+            b64_image: ''
         }};
 
-        this.props.connection.contactInfo(this.props.message.person, (info: ContactInfo) => {
+        this.props.connection.contactInfo(
+            this.props.message.person.contactid, (info: ContactInfo) => {
             this.setState({info: info});
         });
     }
 
     render() {
+
+        var content: JSX.Element = <span />;
+
+        const data = this.props.message.data;
+
+        const sms = data as SmsData;
+        if (sms !== undefined) {
+            content = <Typography type="body1">{sms.message}</Typography>;
+        }
+
+        const mms = data as MmsData;
+        if (mms !== undefined) {
+            if (mms.type === 'IMAGE') {
+                content = <img src={mms.data} width="300" />;
+            } else if (mms.type === 'TEXT') {
+                content = <Typography type="body1">{mms.data}</Typography>;
+            }
+        }
+
         return (
-        <div>
-            <Chip 
-                avatar={<Avatar>{this.state.info.name === undefined || this.state.info.name.length === 0 ? ' ' : this.state.info.name[0]}</Avatar>}
-                label={this.props.message.message}
-            />
-        </div>);
+            <div style={{ paddingBottom: 20 }}>
+                <Card>
+                    <CardContent>
+                        <PersonAvatar info={this.state.info} />
+                        {content}
+                    </CardContent>
+                </Card>
+            </div>);
     }
 
 }

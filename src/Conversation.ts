@@ -1,14 +1,16 @@
-import Message from './Message';
+import { Message, Person } from './Message';
 
-export default interface ConversationData {
+interface ConversationData {
     threadid: number;
     messagecount: number;
     snippet: string;
-    addresses: Array<number>;
+    people: Array<Person>;
     read: Boolean;
 }
 
-export default interface Conversation {
+interface Conversation {
     data: ConversationData;
     messages: Message[];
 }
+
+export { ConversationData, Conversation };

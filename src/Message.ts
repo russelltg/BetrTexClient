@@ -1,8 +1,23 @@
-
-export default interface Message {
-    id: number;
-    person: number;
-    threadid: number;
+interface SmsData {
     message: string;
-    timestamp: number;
 }
+
+interface MmsData {
+    type: string;
+    data: string;
+}
+
+interface Person {
+    contactid: number;
+    number: string;
+}
+
+interface Message {
+    person: Person;
+    threadid: number;
+    timestamp: number;
+    read: boolean;
+    data: MmsData | SmsData;
+}
+
+export { SmsData, MmsData, Person, Message};

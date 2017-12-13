@@ -1,11 +1,10 @@
 import * as React from 'react';
 
-import WsConnection from './WsConnection';
+import { WsConnection } from './WsConnection';
 // import Conversation from './Conversation';
-import ConversationsList from './ConversationsList';
-import ConversationArea from './ConversationArea';
-import Message from './Message';
-import ConversationData from './Conversation';
+import { ConversationsList } from './ConversationsList';
+import { ConversationArea } from './ConversationArea';
+import { ConversationData } from './Conversation';
 import { AppBar, Typography, Toolbar, Drawer } from 'material-ui';
 import withStyles from 'material-ui/styles/withStyles';
 
@@ -24,17 +23,20 @@ const styles = {
   }
 };
 
+// tslint:disable-next-line:no-any
 @(withStyles as any)(styles)
+// tslint:disable-next-line:no-any
 export default class App extends React.Component<any, AppState> {
 
   connection: WsConnection;
   areas: Map<number, JSX.Element>;
 
+// tslint:disable-next-line:no-any
   constructor(props: any) {
     super(props);
 
     this.areas = new Map<number, JSX.Element>();
-    this.connection = new WsConnection('10.0.0.9', 14563, (message: Message) => { return {}; });
+    this.connection = new WsConnection('10.0.0.9', 14563);
 
     // fetch the conversations
     this.connection.listConversations((datas: ConversationData[]) => {
@@ -46,13 +48,17 @@ export default class App extends React.Component<any, AppState> {
   }
 
   onSelectConversation = (threadID: number) => {
+    const a = this.state.currentThread;
+
     this.setState({currentThread: threadID});
+
+    return a;
   }
 
   conversationArea = (threadID: number) => {
-    if (this.areas.has(threadID)) {
-      return this.areas.get(threadID);
-    }
+    // if (this.areas.has(threadID)) {
+    //   return this.areas.get(threadID);
+    // }
 
     // get conversation data for state.currentThread
     var convData: ConversationData | undefined;
@@ -68,10 +74,11 @@ export default class App extends React.Component<any, AppState> {
       width: 'calc(100% - ' + drawerWidth + 'px)',
       height: 'calc(100% - 64px)',
       left: drawerWidth
+// tslint:disable-next-line:no-any
     } as any as React.CSSProperties;
 
-    const conversationArea = convData ? 
-      <div style={areaStyles}><ConversationArea connection={this.connection} conversation={convData} /></div> : <div />;
+    const conversationArea = convData ?
+      <ConversationArea style={areaStyles} connection={this.connection} conversation={convData} /> : <div />;
 
     this.areas.set(threadID, conversationArea);
 
@@ -94,7 +101,7 @@ export default class App extends React.Component<any, AppState> {
         </AppBar>
         <Drawer type="permanent" classes={{paper: this.props.classes.drawerPaper}}>
           <ConversationsList
-            connection={this.connection} 
+            connection={this.connection}
             conversations={this.state.conversations}
             onSelect={this.onSelectConversation}
           />
