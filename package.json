@@ -1,9 +1,11 @@
 {
-  "name": "webinterface",
+  "name": "bridge-client",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "homepage": "http://bridge.russelltg.com",
   "dependencies": {
     "eslint": "^4.13.1",
+    "gh-pages": "^1.1.0",
     "material-ui": "^1.0.0-beta.22",
     "material-ui-icons": "^1.0.0-beta.17",
     "react": "^16.2.0",
@@ -11,6 +13,8 @@
     "react-scripts-ts": "2.8.0"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts-ts start",
     "build": "react-scripts-ts build",
     "test": "react-scripts-ts test --env=jsdom",

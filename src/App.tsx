@@ -95,7 +95,7 @@ export default class App extends React.Component<any, AppState> {
         <AppBar position="static" color="primary">
           <Toolbar>
             <Typography type="title" color="inherit">
-              BetrText
+              Bridge
             </Typography>
           </Toolbar>
         </AppBar>
