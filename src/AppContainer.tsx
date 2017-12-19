@@ -48,8 +48,10 @@ class AppContainer extends React.Component<{}, State> {
             app = <div />;
         }
 
+        // TODO: there is currently a bug in tslint https://github.com/palantir/tslint-react/pull/130
+        // tslint:disable:jsx-wrap-multiline
         return (
-            <div>
+            <>
                 {app}
                 <Dialog open={this.state.ip === '' && this.state.port === -1}>
                     <DialogTitle>
@@ -79,8 +81,10 @@ class AppContainer extends React.Component<{}, State> {
                         </Button>
                     </DialogActions>
                 </Dialog>
-            </div>
+            </>
         );
+        // tslint:enable:jsx-wrap-multiline
+
     }
 
 }

@@ -90,24 +90,25 @@ export default class App extends React.Component<any, AppState> {
   render() {
     const conversationArea = this.conversationArea(this.state.currentThread);
 
-    return (
-      <div>
-        <AppBar position="static" color="primary">
-          <Toolbar>
-            <Typography type="title" color="inherit">
-              Bridge
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        <Drawer type="permanent" classes={{paper: this.props.classes.drawerPaper}}>
-          <ConversationsList
-            connection={this.connection}
-            conversations={this.state.conversations}
-            onSelect={this.onSelectConversation}
-          />
-        </Drawer>
+    // TODO: there is currently a bug in tslint https://github.com/palantir/tslint-react/pull/130
+    // tslint:disable:jsx-wrap-multiline
+    return (<>
+          <AppBar position="static" color="primary">
+            <Toolbar>
+              <Typography type="title" color="inherit">
+                Bridge
+              </Typography>
+            </Toolbar>
+          </AppBar>
+          <Drawer type="permanent" classes={{paper: this.props.classes.drawerPaper}}>
+            <ConversationsList
+              connection={this.connection}
+              conversations={this.state.conversations}
+              onSelect={this.onSelectConversation}
+            />
+          </Drawer>
         {conversationArea}
-      </div>
-    );
+    </>);
+    // tslint:enable:jsx-wrap-multiline
   }
 }

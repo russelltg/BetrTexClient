@@ -4,7 +4,7 @@ class ChatArea extends React.Component<{}, {}> {
 
     render() {
 
-        return <div>a</div>;
+        return <>a</>;
     }
 
 }
