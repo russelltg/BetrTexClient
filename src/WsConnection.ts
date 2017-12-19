@@ -16,6 +16,9 @@ interface RpcResponse<T> extends RpcMessage {
     result: T;
 }
 
+/**
+ * A connection to a Bridge app
+ */
 class WsConnection {
 
     private socket: WebSocket;
@@ -26,7 +29,14 @@ class WsConnection {
 
     private messageHandler: Map<number, (message: Message) => void>;
 
-    constructor (ip: string, port: number) {
+    /**
+     *
+     * @param ip The IP address to connect to
+     * @param port The port the ws server is being hosted on. Default is 14563
+     * @param connect Function to call when the connection is established or times out
+     * @param accept Function to call when the connection is either accepted or rejected by the user
+     */
+    constructor(ip: string, port: number, connect: (c: boolean) => void, accept: (a: boolean) => void) {
         this.waitingIDs = new Map<number, (message: string) => void>();
         this.messageQueue = [];
         this.contactCache = new Map<number, ContactInfo>();
@@ -53,6 +63,20 @@ class WsConnection {
             var req = message as RpcRequest<any>;
             if (req) {
 
+                // test for accepted
+                if (req.method === 'connectionaccepted') {
+                    accept(true);
+
+                    return;
+                }
+
+                // test for rejected
+                if (req.method === 'connectionrejected') {
+                    accept(false);
+
+                    return;
+                }
+
                 if (req.method === 'text-received') {
                     const msg = req.params as Message;
                     const handler = this.messageHandler.get(msg.threadid);
@@ -70,6 +94,12 @@ class WsConnection {
             this.messageQueue.forEach(msg => {
                 this.socket.send(msg);
             });
+
+            connect(true);
+        });
+
+        this.socket.addEventListener('error', (ev: Event) => {
+            connect(false);
         });
     }
 
@@ -86,7 +116,7 @@ class WsConnection {
             thread: threadid,
             numbers: people,
             message: message
-        },                  (a: {}) => { return {}; });
+        }, (a: {}) => { return {}; });
     }
 
     contactInfo(contactID: number, onreturn: (info: ContactInfo) => void) {
