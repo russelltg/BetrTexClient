@@ -4,14 +4,11 @@ import { WsConnection } from './WsConnection';
 import { ConversationsList } from './ConversationsList';
 import { ConversationArea } from './ConversationArea';
 import { ConversationData } from './Conversation';
-import { AppBar, Typography, Toolbar, Drawer, Dialog, DialogTitle, TextField } from 'material-ui';
-import withStyles from 'material-ui/styles/withStyles';
-import DialogContent from 'material-ui/Dialog/DialogContent';
-import CircularProgress from 'material-ui/Progress/CircularProgress';
-import Stepper from 'material-ui/Stepper/Stepper';
-import StepLabel from 'material-ui/Stepper/StepLabel';
-import Step from 'material-ui/Stepper/Step';
-import Button from 'material-ui/Button/Button';
+import {
+  AppBar, Typography, Toolbar, Drawer, Dialog,
+  DialogTitle, TextField, Stepper, StepLabel, Button, Step,
+  DialogContent, withStyles, CircularProgress
+} from 'material-ui';
 import WarningIcon from 'material-ui-icons/Warning';
 
 const drawerWidth = 300;
@@ -110,6 +107,10 @@ export default class App extends React.Component<any, AppState> {
     this.setState({ state: currentState.connecting });
   }
 
+  onRestartConnect = () => {
+    this.setState({ failed: false, state: currentState.enteringAddress });
+  }
+
   conversationArea = (threadID: number) => {
     // if (this.areas.has(threadID)) {
     //   return this.areas.get(threadID);
@@ -156,15 +157,15 @@ export default class App extends React.Component<any, AppState> {
               margin="dense"
               label="IP"
               fullWidth={true}
-              defaultValue="10.0.0.9"
+              defaultValue={this.ip}
               onChange={this.onIpChange}
             />
             <TextField
               margin="dense"
               label="Port"
               fullWidth={true}
-              defaultValue="14563"
-              onChange={this.onPortChange}
+              defaultValue={this.port}
+              onChange={this.onIpChange}
             />
             <Button onClick={this.onConnectClick}>
               Connect
@@ -178,7 +179,10 @@ export default class App extends React.Component<any, AppState> {
           <div>
             Connecting to {this.ip}:{this.port}
             {this.state.failed ?
+              <>
               <WarningIcon color="red" />
+              <Button onClick={this.onRestartConnect}>Restart</Button>
+              </>
               :
               <CircularProgress style={{ alignContent: 'center' }} />
             }
@@ -191,7 +195,10 @@ export default class App extends React.Component<any, AppState> {
           <div>
             Waiting for authentication. Go to your device and select <strong>Accept</strong>
             {this.state.failed ?
-              <WarningIcon color="red" /> :
+              <>
+              <WarningIcon color="red" />
+              <Button onClick={this.onRestartConnect}>Restart</Button>
+              </> :
               <CircularProgress />
             }
           </div>
