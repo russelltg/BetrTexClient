@@ -3,14 +3,37 @@ import { ConversationData } from './Conversation';
 import MessageArea from './MessageArea';
 import { Message } from './Message';
 import { WsConnection } from './WsConnection';
-import { Input, IconButton, Divider, FormControl } from 'material-ui';
+import { Input, IconButton, Divider, FormControl, withStyles } from 'material-ui';
 import SendIcon from 'material-ui-icons/Send';
 import CircularProgress from 'material-ui/Progress/CircularProgress';
+import { StyleRulesCallback, WithStyles } from 'material-ui/styles/withStyles';
+import { Theme, StyleRules } from 'material-ui/styles';
+
+const styles: StyleRulesCallback = (theme: Theme): StyleRules => {
+    return {
+        messageArea: {
+            backgroundColor: theme.palette.background.contentFrame,
+            boxSizing: 'border-box',
+            paddingLeft: 20,
+            overflowY: 'scroll',
+            position: 'absolute',
+            height: 'calc(100% - 50px)',
+            width: 'calc(100%)',
+        },
+        form: {
+            backgroundColor: theme.palette.background.default,
+            position: 'absolute',
+            bottom: 0,
+            boxSizing: 'border-box',
+            paddingLeft: 20,
+            paddingBottom: 5
+        }
+    };
+};
 
 interface ConversationAreaProps {
     conversation: ConversationData;
     connection: WsConnection;
-    style: React.CSSProperties;
 }
 
 interface ConversationAreaState {
@@ -18,69 +41,83 @@ interface ConversationAreaState {
     messages: Message[];
     loaded: boolean;
 }
+type StyleProps = WithStyles<'messageArea' | 'form'>;
 
-class ConversationArea extends React.Component<ConversationAreaProps, ConversationAreaState> {
+const ConversationArea = withStyles(styles)<ConversationAreaProps>(
+    class extends React.Component<ConversationAreaProps & StyleProps, ConversationAreaState> {
 
-    bottom: HTMLDivElement;
+        scrollingdiv: HTMLDivElement;
 
-    constructor(props: ConversationAreaProps) {
-        super(props);
+        constructor(props: ConversationAreaProps & StyleProps) {
+            super(props);
 
-        this.state = { message: '', messages: [], loaded: false };
+            this.state = { message: '', messages: [], loaded: false };
 
-        this.props.connection.getMessages(this.props.conversation.threadid, (messages: Message[]) => {
-            this.setState({ messages: messages, loaded: true });
-
-            this.bottom.scrollIntoView();
-        });
-
-        this.props.connection.registerThreadID(this.props.conversation.threadid, (message: Message) => {
-            this.setState({ messages: [...this.state.messages, message] });
-
-            this.bottom.scrollIntoView();
-        });
-
-    }
-
-    sendMessage = () => {
-        // clear box
-        this.setState({ message: '' });
-
-        this.props.connection.sendText(this.state.message, this.props.conversation.people.map((it) => {
-            return it.number;
-        }), this.props.conversation.threadid);
-    }
-
-    handleTextChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-        this.setState({ message: evt.target.value });
-    }
-
-    handleKeyUp = (evt: React.KeyboardEvent<HTMLInputElement>) => {
-        if (evt.key === 'Enter') {
-            this.sendMessage();
         }
-    }
 
-    componentDidMount() {
-        this.bottom.scrollIntoView();
-    }
+        componentWillMount() {
 
-    render() {
+            this.props.connection.getMessages(
+                this.props.conversation.threadid,
+                Math.max(0, this.props.conversation.messagecount - 40), // get last 10 messages
+                this.props.conversation.messagecount,
+                (messages: Message[]) => {
+                    this.setState({ messages: messages, loaded: true });
 
-        const messagesStyling: React.CSSProperties = {
-            boxSizing: 'border-box',
-            paddingLeft: 20,
-            overflowY: 'scroll',
-            position: 'absolute',
-            height: 'calc(100% - 50px)',
-            width: 'calc(100%)',
-        };
+                    this.scrollToBottom();
+                });
 
-        return (
-            <div style={this.props.style}>
+            this.props.connection.registerThreadID(this.props.conversation.threadid, (message: Message) => {
+                this.setState({ messages: [...this.state.messages, message] });
+
+                this.scrollToBottom();
+            });
+        }
+
+        sendMessage = () => {
+            // clear box
+            this.setState({ message: '' });
+
+            this.props.connection.sendText(this.state.message, this.props.conversation.people.map((it) => {
+                return it.number;
+            }), this.props.conversation.threadid);
+        }
+
+        handleTextChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+            this.setState({ message: evt.target.value });
+        }
+
+        handleKeyUp = (evt: React.KeyboardEvent<HTMLInputElement>) => {
+            if (evt.key === 'Enter') {
+                this.sendMessage();
+            }
+        }
+
+        scrollToBottom() {
+            this.scrollingdiv.scroll({ top: this.scrollingdiv.scrollHeight });
+        }
+
+        componentDidMount() {
+
+            // scroll to bottom
+            this.scrollToBottom();
+
+            // this.scrollingdiv.addEventListener('scroll', () => {
+
+            // })
+        }
+
+        render() {
+
+            // tslint:disable:jsx-wrap-multiline
+            return (
+                <>
                 {!this.state.loaded ?
                     <CircularProgress /> : <></>}
-                <div style={messagesStyling}>
+                <div
+                    className={this.props.classes.messageArea}
+                    ref={(e1) => { if (e1) { this.scrollingdiv = e1; } }}
+                >
                     {this.state.messages.map((message: Message, i: number) => (
                         <div key={i}>
                             <MessageArea
@@ -89,14 +126,11 @@ class ConversationArea extends React.Component<ConversationAreaProps, Conversati
                             />
                         </div>
                     ))}
-                    <div style={{ float: 'left', clear: 'both' }} ref={(e1) => { if (e1) { this.bottom = e1; } }} />
                 </div>
                 <Divider light={true} />
                 <FormControl
                     fullWidth={true}
-                    style={{
-                        position: 'absolute', bottom: 0, boxSizing: 'border-box', paddingLeft: 20, paddingBottom: 5
-                    }}
+                    className={this.props.classes.form}
                 >
                     <Input
                         onKeyUp={this.handleKeyUp}
@@ -108,11 +142,12 @@ class ConversationArea extends React.Component<ConversationAreaProps, Conversati
                                 <SendIcon />
                             </IconButton>}
                     />
-
                 </FormControl>
-            </div>
-        );
+                </>
+            );
+            // tslint:enable:jsx-wrap-multiline
+        }
     }
-}
+);
 
 export { ConversationArea };

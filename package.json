@@ -8,7 +8,9 @@
     "material-ui-icons": "^1.0.0-beta.17",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
-    "react-scripts-ts": "2.8.0"
+    "react-emojione": "^5.0.0",
+    "react-scripts-ts": "2.8.0",
+    "string-hash": "^1.1.3"
   },
   "scripts": {
     "predeploy": "npm run build",

@@ -1,7 +1,7 @@
 
 interface ContactInfo {
     name: string;
-    b64_image: string;
+    image: string;
 }
 
 export { ContactInfo };

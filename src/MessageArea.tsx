@@ -2,8 +2,11 @@ import * as React from 'react';
 import { Message, MmsData, SmsData } from './Message';
 import { ContactInfo } from './ContactInfo';
 import { WsConnection } from './WsConnection';
-import { Card, CardContent, Typography } from 'material-ui';
 import PersonAvatar from './PersonAvatar';
+import FetchedImage from './FetchedImage';
+import { WithStyles, withStyles, Paper } from 'material-ui';
+import Emojify from 'react-emojione';
+import Typography from 'material-ui/Typography/Typography';
 
 interface MessageAreaParams {
     message: Message;
@@ -14,20 +17,53 @@ interface MessageAreaState {
     info: ContactInfo;
 }
 
-export default class MessageArea extends React.Component<MessageAreaParams, MessageAreaState> {
+const height = 32;
+const maxwidth = 400;
+const spacing = 6;
+const avatarMargin = 6;
 
-    constructor(params: MessageAreaParams) {
+const styles = {
+    root: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: height / 2 + 4 + avatarMargin / 2,
+        maxWidth: maxwidth,
+        width: 'fit-content',
+        marginBottom: spacing,
+    } as React.CSSProperties,
+    avatar: {
+        top: '0%',
+        alignSelf: 'flex-start',
+        width: height,
+        height: height,
+        margin: avatarMargin,
+    } as React.CSSProperties,
+    content: {
+        margin: 5
+    } as React.CSSProperties
+};
+
+class MessageArea extends React.Component<MessageAreaParams & WithStyles<keyof typeof styles>, MessageAreaState> {
+
+    constructor(params: MessageAreaParams & WithStyles<keyof typeof styles>) {
         super(params);
 
-        this.state = {info: {
-            name: '',
-            b64_image: ''
-        }};
+        this.state = {
+            info: {
+                name: '',
+                image: ''
+            }
+        };
 
+    }
+
+    componentDidMount() {
         this.props.connection.contactInfo(
             this.props.message.person.contactid, (info: ContactInfo) => {
-            this.setState({info: info});
-        });
+                this.setState({ info: info });
+            }
+        );
     }
 
     render() {
@@ -38,27 +74,42 @@ export default class MessageArea extends React.Component<MessageAreaParams, Mess
 
         const sms = data as SmsData;
         if (sms !== undefined) {
-            content = <Typography type="body1">{sms.message}</Typography>;
+            content = <Typography type="body1"><Emojify>{sms.message}</Emojify></Typography>;
         }
 
         const mms = data as MmsData;
         if (mms !== undefined) {
             if (mms.type === 'IMAGE') {
-                content = <img src={mms.data} width="300" />;
+                content = (
+                    <FetchedImage
+                        connection={this.props.connection}
+                        image={mms.data}
+                        width={300}
+                        type="img"
+                    />
+                );
             } else if (mms.type === 'TEXT') {
-                content = <Typography type="body1">{mms.data}</Typography>;
+                content = <Typography type="body1"><Emojify>{mms.data}</Emojify></Typography>;
             }
         }
 
         return (
-            <div style={{ paddingBottom: 20 }}>
-                <Card>
-                    <CardContent>
-                        <PersonAvatar info={this.state.info} />
-                        {content}
-                    </CardContent>
-                </Card>
-            </div>);
+            <Paper
+                className={this.props.classes.root}
+                elevation={1}
+            >
+                <PersonAvatar
+                    phoneNumber={this.props.message.person.number}
+                    className={this.props.classes.avatar}
+                    info={this.state.info}
+                    connection={this.props.connection}
+                />
+                <div className={this.props.classes.content}>
+                    {content}
+                </div>
+            </Paper>);
     }
 
 }
+
+export default withStyles(styles)<MessageAreaParams>(MessageArea);

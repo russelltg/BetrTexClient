@@ -1,6 +1,7 @@
 import { ConversationData } from './Conversation';
 import { Message } from './Message';
 import { ContactInfo } from './ContactInfo';
+import { Base64Image } from './Base64Image';
 
 interface RpcMessage {
     id: number;
@@ -25,7 +26,6 @@ class WsConnection {
     private waitingIDs: Map<number, (message: string) => void>;
     private nextID = 1;
     private messageQueue: string[];
-    private contactCache: Map<number, ContactInfo>;
 
     private messageHandler: Map<number, (message: Message) => void>;
 
@@ -39,7 +39,6 @@ class WsConnection {
     constructor(ip: string, port: number, connect: (c: boolean) => void, accept: (a: boolean) => void) {
         this.waitingIDs = new Map<number, (message: string) => void>();
         this.messageQueue = [];
-        this.contactCache = new Map<number, ContactInfo>();
         this.messageHandler = new Map<number, (message: Message) => void>();
         this.socket = new WebSocket('ws://' + ip + ':' + String(port));
 
@@ -119,33 +118,77 @@ class WsConnection {
         }, (a: {}) => { return {}; });
     }
 
+    /**
+     *
+     * @param imageUri The URI of the image to get. Given by `getContactInfo` or `getMessages`
+     * @param onreturn The function to call when the image has been retreived
+     */
+    getImage(imageUri: string, onreturn: (base64Data: Base64Image) => void) {
+
+        // see if it's in the cache
+        // TODO: somehow identify the phone instead of IP as IP can change
+        const key = 'bridge/image(' + encodeURIComponent(imageUri) + '):' + this.socket.url;
+        const value = localStorage.getItem(key);
+        if (value) {
+            return onreturn(JSON.parse(value));
+        }
+        // cache entry not found
+
+        // request
+        this.performRequest('get-image', imageUri, (picture: Base64Image) => {
+
+            // save to cache
+            localStorage[key] = JSON.stringify(picture);
+
+            onreturn(picture);
+        });
+    }
+
     contactInfo(contactID: number, onreturn: (info: ContactInfo) => void) {
 
-        // if (this.contactCache.has(contactID)) {
-        //     const cachedEntry = this.contactCache.get(contactID);
-        //     if (cachedEntry) {
-        //         onreturn(cachedEntry);
-        //         return;
-        //     }
-        // }
-
+        // zero means the sender is the owner of the phone
         if (contactID === 0) {
             onreturn({
                 name: 'Me',
-                b64_image: ''
+                image: ''
             });
             return;
         }
 
-        this.performRequest('contact-info', contactID, (info: ContactInfo) => {
-            this.contactCache.set(contactID, info);
+        // -1 means unknown
+        if (contactID === -1) {
+            onreturn({
+                name: '',
+                image: ''
+            });
+            return;
+        }
 
-            onreturn(info);
+        // see if it's in the cache
+        // TODO: somehow identify the phone instead of IP as IP can change
+        const key = 'bridge/contact(' + contactID.toString() + '):' + this.socket.url;
+        const value = localStorage.getItem(key);
+        if (value) {
+            return onreturn(JSON.parse(value) as ContactInfo);
+        }
+        // cache entry not found
+
+        // request
+        this.performRequest('contact-info', contactID, (contact: ContactInfo) => {
+
+            // save to cache
+            localStorage[key] = JSON.stringify(contact);
+
+            onreturn(contact);
         });
     }
 
-    getMessages(threadID: number, onreturn: (info: Message[]) => void) {
-        this.performRequest('get-messages', threadID, onreturn);
+    getMessages(threadID: number, from: number, to: number, onreturn: (info: Message[]) => void) {
+        this.performRequest('get-messages', {
+            threadid: threadID,
+            from: from,
+            to: to
+        }, onreturn);
     }
 
     private performRequest<T, U>(method: string, params: U, onreturn: (message: T) => void) {

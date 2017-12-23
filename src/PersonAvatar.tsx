@@ -2,9 +2,30 @@ import * as React from 'react';
 import { ContactInfo } from './ContactInfo';
 import { Avatar } from 'material-ui';
 import { Person } from 'material-ui-icons';
+import FetchedImage from './FetchedImage';
+import { WsConnection } from './WsConnection';
+import {
+    amber, blue, cyan, deepOrange, deepPurple,
+    green, indigo, lightBlue, lightGreen, lime, orange, pink,
+    purple, red, teal, yellow
+} from 'material-ui/colors';
+import stringHash from 'string-hash';
+
+const colors = [
+    amber, blue, cyan, deepOrange, deepPurple,
+    green, indigo, lightBlue, lightGreen, lime, orange, pink,
+    purple, red, teal, yellow
+];
+
+const generatePersonColor = (phoneNumber: string) => {
+    return colors[stringHash(phoneNumber) % colors.length][500];
+};
 
 interface Props {
     info: ContactInfo;
+    phoneNumber: string; // to base hash off of
+    connection: WsConnection;
+    className?: string;
 }
 
 const initials = (name: string) => {
@@ -22,11 +43,33 @@ const initials = (name: string) => {
 };
 
 export default (props: Props) => {
-    if (props.info.b64_image !== '') {
-        return <Avatar alt={initials(props.info.name)} src={props.info.b64_image} />;
+    if (props.info.image !== '') {
+        return (
+            <FetchedImage
+                className={props.className}
+                alt={initials(props.info.name)}
+                connection={props.connection}
+                image={props.info.image}
+                type="avatar"
+            />
+        );
     } else if (props.info.name !== '') {
-        return <Avatar>{initials(props.info.name)}</Avatar>;
+        return (
+            <Avatar
+                className={props.className}
+                style={{ backgroundColor: generatePersonColor(props.phoneNumber) }}
+            >
+                {initials(props.info.name)}
+            </Avatar>
+        );
     } else {
-        return <Avatar><Person /></Avatar>;
+        return (
+            <Avatar
+                className={props.className}
+                style={{ backgroundColor: generatePersonColor(props.phoneNumber) }}
+            >
+                <Person />
+            </Avatar>
+        );
     }
 };

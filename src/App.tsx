@@ -4,14 +4,21 @@ import { WsConnection } from './WsConnection';
 import { ConversationsList } from './ConversationsList';
 import { ConversationArea } from './ConversationArea';
 import { ConversationData } from './Conversation';
+import Options from './Options';
 import {
   AppBar, Typography, Toolbar, Drawer, Dialog,
   DialogTitle, TextField, Stepper, StepLabel, Button, Step,
-  DialogContent, withStyles, CircularProgress
+  DialogContent, withStyles, CircularProgress, MenuItem, createMuiTheme
 } from 'material-ui';
 import WarningIcon from 'material-ui-icons/Warning';
+import { WithStyles } from 'material-ui/styles/withStyles';
+import IconButton from 'material-ui/IconButton/IconButton';
+import MoreVertIcon from 'material-ui-icons/MoreVert';
+import Menu from 'material-ui/Menu/Menu';
+import { MouseEvent } from 'react';
+import { Theme, MuiThemeProvider, StyleRules } from 'material-ui/styles';
 
-const drawerWidth = 300;
+const drawerWidth = '25%';
 
 enum currentState {
   enteringAddress,
@@ -25,20 +32,28 @@ interface AppState {
   currentThread: number;
   state: currentState;
   failed: boolean;
+  anchorEl?: HTMLElement;
+  theme: Theme;
+  optionsOpen: boolean;
 }
 
-const styles = {
+const styles: StyleRules = {
   drawerPaper: {
     height: 'calc(100% - 64px)',
     width: drawerWidth,
     top: 64
+  },
+  area: {
+    position: 'absolute',
+    width: 'calc(100% - ' + drawerWidth + ')',
+    height: 'calc(100% - 64px)',
+    left: drawerWidth
   }
 };
 
-// tslint:disable-next-line:no-any
-@(withStyles as any)(styles)
-// tslint:disable-next-line:no-any
-export default class App extends React.Component<any, AppState> {
+type Props = WithStyles<keyof typeof styles>;
+
+class App extends React.Component<Props, AppState> {
 
   connection: WsConnection;
   areas: Map<number, JSX.Element>;
@@ -46,18 +61,33 @@ export default class App extends React.Component<any, AppState> {
   ip: string = '10.0.0.9';
   port: number = 14563;
 
-  // tslint:disable-next-line:no-any
-  constructor(props: any) {
+  darkTheme: Theme;
+  lightTheme: Theme;
+
+  constructor(props: Props) {
     super(props);
 
     this.areas = new Map<number, JSX.Element>();
 
+    this.darkTheme = createMuiTheme({
+      palette: {
+        type: 'dark'
+      }
+    });
+
+    this.lightTheme = createMuiTheme({
+      palette: {
+        type: 'light'
+      }
+    });
     // initialzie state
     this.state = {
       conversations: [],
       currentThread: -1,
       state: currentState.enteringAddress,
-      failed: false
+      failed: false,
+      theme: this.lightTheme,
+      optionsOpen: false,
     };
 
   }
@@ -111,6 +141,26 @@ export default class App extends React.Component<any, AppState> {
     this.setState({ failed: false, state: currentState.enteringAddress });
   }
 
+  onMenuClick = (action: MouseEvent<HTMLElement>) => {
+    this.setState({ anchorEl: action.target as HTMLElement });
+  }
+
+  onClose = () => {
+    this.setState({ anchorEl: undefined });
+  }
+
+  onThemeChange = (name: string) => {
+    this.setState({ theme: name === 'dark' ? this.darkTheme : this.lightTheme });
+  }
+
+  onRequestOptionsClose = () => {
+    this.setState({ optionsOpen: false });
+  }
+
+  onRequestOptionsOpen = () => {
+    this.setState({ optionsOpen: true });
+  }
+
   conversationArea = (threadID: number) => {
     // if (this.areas.has(threadID)) {
     //   return this.areas.get(threadID);
@@ -125,16 +175,15 @@ export default class App extends React.Component<any, AppState> {
       }
     });
 
-    const areaStyles = {
-      position: 'absolute',
-      width: 'calc(100% - ' + drawerWidth + 'px)',
-      height: 'calc(100% - 64px)',
-      left: drawerWidth
-      // tslint:disable-next-line:no-any
-    } as any as React.CSSProperties;
-
     const conversationArea = convData ?
-      <ConversationArea style={areaStyles} connection={this.connection} conversation={convData} /> : <div />;
+      (
+        <div className={this.props.classes.area}>
+          <ConversationArea
+            connection={this.connection}
+            conversation={convData}
+          />
+        </div>
+      ) : <></>;
 
     this.areas.set(threadID, conversationArea);
 
@@ -164,7 +213,7 @@ export default class App extends React.Component<any, AppState> {
               margin="dense"
               label="Port"
               fullWidth={true}
-              defaultValue={this.port}
+              defaultValue={this.port.toString()}
               onChange={this.onIpChange}
             />
             <Button onClick={this.onConnectClick}>
@@ -208,45 +257,72 @@ export default class App extends React.Component<any, AppState> {
       default: break;
     }
 
-    // TODO: there is currently a bug in tslint https://github.com/palantir/tslint-react/pull/130
-    // tslint:disable:jsx-wrap-multiline
-    return (<>
-      <Dialog open={this.state.state !== currentState.using}>
-        <DialogTitle>
-          Acquiring connection...
-        </DialogTitle>
-        <DialogContent>
-          <Stepper activeStep={this.state.state}>
-            <Step key={currentState.enteringAddress}>
-              <StepLabel>Enter IP and port</StepLabel>
-            </Step>
-            <Step key={currentState.connecting} >
-              <StepLabel>Connect</StepLabel>
-            </Step>
-            <Step key={currentState.authenticating}>
-              <StepLabel>Authenticating</StepLabel>
-            </Step>
-          </Stepper>
-          {stepperContent}
-        </DialogContent>
-      </Dialog>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography type="title" color="inherit">
-            Bridge
-              </Typography>
-        </Toolbar>
-      </AppBar>
-      <Drawer type="permanent" classes={{ paper: this.props.classes.drawerPaper }}>
-        {this.state.state === currentState.using ? <ConversationsList
-          connection={this.connection}
-          conversations={this.state.conversations}
-          onSelect={this.onSelectConversation}
-        /> : <></>
-        }
-      </Drawer>
-      {conversationArea}
-      </>);
-    // tslint:enable:jsx-wrap-multiline
+    const open = this.state.anchorEl !== undefined;
+
+    return (
+      <MuiThemeProvider
+        theme={this.state.theme}
+      >
+        <Options
+          open={this.state.optionsOpen}
+          onRequestClose={this.onRequestOptionsClose}
+          onChange={this.onThemeChange}
+        />
+        <Dialog open={this.state.state !== currentState.using}>
+          <DialogTitle>
+            Acquiring connection...
+          </DialogTitle>
+          <DialogContent>
+            <Stepper activeStep={this.state.state}>
+              <Step key={currentState.enteringAddress}>
+                <StepLabel>Enter IP and port</StepLabel>
+              </Step>
+              <Step key={currentState.connecting} >
+                <StepLabel>Connect</StepLabel>
+              </Step>
+              <Step key={currentState.authenticating}>
+                <StepLabel>Authenticating</StepLabel>
+              </Step>
+            </Stepper>
+            {stepperContent}
+          </DialogContent>
+        </Dialog>
+        <AppBar position="static" color="primary">
+          <Toolbar>
+            <Typography type="title" color="inherit">
+              Bridge
+            </Typography>
+            <IconButton
+              onClick={this.onMenuClick}
+              aria-owns={open ? 'menu-appbar' : null}
+              color="contrast"
+            >
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              id="menu-appbar"
+              anchorEl={this.state.anchorEl}
+              open={open}
+              onRequestClose={this.onClose}
+            >
+              <MenuItem onClick={this.onRequestOptionsOpen}>
+                Options
+              </MenuItem>
+            </Menu>
+          </Toolbar>
+        </AppBar>
+        <Drawer type="permanent" classes={{ paper: this.props.classes.drawerPaper }}>
+          {this.state.state === currentState.using ? <ConversationsList
+            connection={this.connection}
+            conversations={this.state.conversations}
+            onSelect={this.onSelectConversation}
+          /> : <></>
+          }
+        </Drawer>
+        {conversationArea}
+      </MuiThemeProvider>
+    );
   }
 }
+
+export default withStyles(styles)<{}>(App);
