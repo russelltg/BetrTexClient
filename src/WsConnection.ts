@@ -1,7 +1,23 @@
 import { ConversationData } from './Conversation';
 import { Message } from './Message';
-import { ContactInfo } from './ContactInfo';
+import { ContactInfo, defaultContactInfo } from './ContactInfo';
 import { Base64Image } from './Base64Image';
+import { defaultPendingImage } from './PendingImage';
+
+interface NewTextMessage {
+    message: string;
+}
+
+interface NewImageMessage {
+    base64_image: string;
+    mime_type: string;
+}
+
+interface SendTextParams {
+    threadid: number;
+    numbers: Array<string>;
+    message: NewTextMessage | NewImageMessage;
+}
 
 interface RpcMessage {
     id: number;
@@ -110,12 +126,8 @@ class WsConnection {
         this.performRequest('list-conversations', {}, onreturn);
     }
 
-    sendText(message: string, people: string[], threadid: number) {
-        this.performRequest('send-text', {
-            thread: threadid,
-            numbers: people,
-            message: message
-        }, (a: {}) => { return {}; });
+    sendText(params: SendTextParams) {
+        this.performRequest('send-text', params, (a: {}) => { return {}; });
     }
 
     /**
@@ -138,7 +150,10 @@ class WsConnection {
         this.performRequest('get-image', imageUri, (picture: Base64Image) => {
 
             // save to cache
-            localStorage[key] = JSON.stringify(picture);
+            try {
+                localStorage[key] = JSON.stringify(picture);
+                // tslint:disable-next-line:no-empty
+            } catch (e) { }
 
             onreturn(picture);
         });
@@ -150,17 +165,14 @@ class WsConnection {
         if (contactID === 0) {
             onreturn({
                 name: 'Me',
-                image: ''
+                image: defaultPendingImage
             });
             return;
         }
 
         // -1 means unknown
         if (contactID === -1) {
-            onreturn({
-                name: '',
-                image: ''
-            });
+            onreturn(defaultContactInfo);
             return;
         }
 

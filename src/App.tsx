@@ -48,7 +48,12 @@ const styles: StyleRules = {
     width: 'calc(100% - ' + drawerWidth + ')',
     height: 'calc(100% - 64px)',
     left: drawerWidth
-  }
+  },
+  progress: {
+    verticalAlign: 'middle',
+    right: 0,
+    position: 'relative'
+  } as React.CSSProperties
 };
 
 type Props = WithStyles<keyof typeof styles>;
@@ -214,7 +219,7 @@ class App extends React.Component<Props, AppState> {
               label="Port"
               fullWidth={true}
               defaultValue={this.port.toString()}
-              onChange={this.onIpChange}
+              onChange={this.onPortChange}
             />
             <Button onClick={this.onConnectClick}>
               Connect
@@ -233,7 +238,7 @@ class App extends React.Component<Props, AppState> {
               <Button onClick={this.onRestartConnect}>Restart</Button>
               </>
               :
-              <CircularProgress style={{ alignContent: 'center' }} />
+              <CircularProgress className={this.props.classes.progress} />
             }
           </div>
         );
@@ -248,7 +253,7 @@ class App extends React.Component<Props, AppState> {
               <WarningIcon color="red" />
               <Button onClick={this.onRestartConnect}>Restart</Button>
               </> :
-              <CircularProgress />
+              <CircularProgress className={this.props.classes.progress} />
             }
           </div>
         );
@@ -281,7 +286,7 @@ class App extends React.Component<Props, AppState> {
                 <StepLabel>Connect</StepLabel>
               </Step>
               <Step key={currentState.authenticating}>
-                <StepLabel>Authenticating</StepLabel>
+                <StepLabel>Authenticate</StepLabel>
               </Step>
             </Stepper>
             {stepperContent}

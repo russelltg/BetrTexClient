@@ -2,18 +2,19 @@ import * as React from 'react';
 import { WsConnection } from './WsConnection';
 import { Avatar } from 'material-ui';
 import { Base64Image, getImageSrc } from './Base64Image';
+import { PendingImage } from './PendingImage';
 
 interface Props {
     type?: 'avatar' | 'img';
     alt?: string;
-    width?: number;
+    height?: number;
     className?: string;
-    image: string;
+    image: PendingImage;
     connection: WsConnection;
 }
 
 interface State {
-    image: Base64Image;
+    src: string;
 }
 
 export default class FetchedImage extends React.Component<Props, State> {
@@ -21,7 +22,7 @@ export default class FetchedImage extends React.Component<Props, State> {
     static defaultProps: Partial<Props> = {
         type: 'img',
         alt: '',
-        width: 100,
+        height: 600,
         className: ''
     };
 
@@ -30,10 +31,7 @@ export default class FetchedImage extends React.Component<Props, State> {
 
         // init state
         this.state = {
-            image: {
-                base64_data: '',
-                mime_type: ''
-            }
+            src: '//:0'
         };
 
     }
@@ -41,21 +39,21 @@ export default class FetchedImage extends React.Component<Props, State> {
     componentDidMount() {
 
         // reqest data from connection
-        this.props.connection.getImage(this.props.image, (image: Base64Image) => {
-            this.setState({ image });
+        this.props.connection.getImage(this.props.image.uri, (image: Base64Image) => {
+            this.setState({ src: getImageSrc(image) });
         });
     }
 
     render() {
         if (this.props.type === 'avatar') {
-            return <Avatar className={this.props.className} alt={this.props.alt} src={getImageSrc(this.state.image)} />;
+            return <Avatar className={this.props.className} alt={this.props.alt} src={this.state.src} />;
         } else {
             return (
                 <img
                     className={this.props.className}
                     alt={this.props.alt}
-                    src={getImageSrc(this.state.image)}
-                    width={this.props.width}
+                    src={this.state.src}
+                    height={this.props.height}
                 />
             );
         }

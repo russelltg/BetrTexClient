@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Message, MmsData, SmsData } from './Message';
-import { ContactInfo } from './ContactInfo';
+import { ContactInfo, defaultContactInfo } from './ContactInfo';
 import { WsConnection } from './WsConnection';
 import PersonAvatar from './PersonAvatar';
 import FetchedImage from './FetchedImage';
@@ -31,16 +31,20 @@ const styles = {
         maxWidth: maxwidth,
         width: 'fit-content',
         marginBottom: spacing,
+        padding: avatarMargin,
+        paddingRight: 10
     } as React.CSSProperties,
     avatar: {
         top: '0%',
         alignSelf: 'flex-start',
         width: height,
         height: height,
-        margin: avatarMargin,
     } as React.CSSProperties,
     content: {
-        margin: 5
+        marginTop: 5,
+        marginBottom: 5,
+        marginLeft: 5,
+        whiteSpace: 'pre-wrap'
     } as React.CSSProperties
 };
 
@@ -50,10 +54,7 @@ class MessageArea extends React.Component<MessageAreaParams & WithStyles<keyof t
         super(params);
 
         this.state = {
-            info: {
-                name: '',
-                image: ''
-            }
+            info: defaultContactInfo
         };
 
     }
@@ -84,7 +85,7 @@ class MessageArea extends React.Component<MessageAreaParams & WithStyles<keyof t
                     <FetchedImage
                         connection={this.props.connection}
                         image={mms.data}
-                        width={300}
+                        height={300}
                         type="img"
                     />
                 );

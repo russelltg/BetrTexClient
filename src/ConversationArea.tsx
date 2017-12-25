@@ -3,28 +3,34 @@ import { ConversationData } from './Conversation';
 import MessageArea from './MessageArea';
 import { Message } from './Message';
 import { WsConnection } from './WsConnection';
-import { Input, IconButton, Divider, FormControl, withStyles } from 'material-ui';
+import { IconButton, withStyles, Input } from 'material-ui';
 import SendIcon from 'material-ui-icons/Send';
 import CircularProgress from 'material-ui/Progress/CircularProgress';
 import { StyleRulesCallback, WithStyles } from 'material-ui/styles/withStyles';
 import { Theme, StyleRules } from 'material-ui/styles';
+import FormControl from 'material-ui/Form/FormControl';
+import { ClipboardEvent } from 'react';
 
 const styles: StyleRulesCallback = (theme: Theme): StyleRules => {
     return {
+        root: {
+            display: 'flex'
+        },
         messageArea: {
-            backgroundColor: theme.palette.background.contentFrame,
+            position: 'absolute',
             boxSizing: 'border-box',
+            backgroundColor: theme.palette.background.contentFrame,
             paddingLeft: 20,
             overflowY: 'scroll',
-            position: 'absolute',
-            height: 'calc(100% - 50px)',
-            width: 'calc(100%)',
+            height: '100%',
+            width: '100%',
         },
         form: {
-            backgroundColor: theme.palette.background.default,
             position: 'absolute',
-            bottom: 0,
             boxSizing: 'border-box',
+            width: '100%',
+            backgroundColor: theme.palette.background.default,
+            bottom: 0,
             paddingLeft: 20,
             paddingBottom: 5
         }
@@ -41,12 +47,13 @@ interface ConversationAreaState {
     messages: Message[];
     loaded: boolean;
 }
-type StyleProps = WithStyles<'messageArea' | 'form'>;
+type StyleProps = WithStyles<'messageArea' | 'form' | 'root'>;
 
 const ConversationArea = withStyles(styles)<ConversationAreaProps>(
     class extends React.Component<ConversationAreaProps & StyleProps, ConversationAreaState> {
 
         scrollingdiv: HTMLDivElement;
+        textAreaDiv: HTMLDivElement;
 
         constructor(props: ConversationAreaProps & StyleProps) {
             super(props);
@@ -59,7 +66,7 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
 
             this.props.connection.getMessages(
                 this.props.conversation.threadid,
-                Math.max(0, this.props.conversation.messagecount - 40), // get last 10 messages
+                Math.max(0, this.props.conversation.messagecount - 20), // get last 10 messages
                 this.props.conversation.messagecount,
                 (messages: Message[]) => {
                     this.setState({ messages: messages, loaded: true });
@@ -78,17 +85,30 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
             // clear box
             this.setState({ message: '' });
 
-            this.props.connection.sendText(this.state.message, this.props.conversation.people.map((it) => {
-                return it.number;
-            }), this.props.conversation.threadid);
+            this.props.connection.sendText({
+                threadid: this.props.conversation.threadid,
+                message: {
+                    message: this.state.message
+                },
+                numbers: this.props.conversation.people.map((it) => {
+                    return it.number;
+                }),
+            });
+        }
+
+        onPaste = (e: ClipboardEvent<any>) => {
+            e.clipboardData.getData('image');
         }
 
         handleTextChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+            // the height could've changed
+            this.scrollingdiv.style.height = 'calc(100% - ' + this.textAreaDiv.clientHeight + 'px)';
+
             this.setState({ message: evt.target.value });
         }
 
         handleKeyUp = (evt: React.KeyboardEvent<HTMLInputElement>) => {
-            if (evt.key === 'Enter') {
+            if (evt.key === 'Enter' && !evt.ctrlKey && !evt.shiftKey && this.state.message !== '') {
                 this.sendMessage();
             }
         }
@@ -102,50 +122,45 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
             // scroll to bottom
             this.scrollToBottom();
 
-            // this.scrollingdiv.addEventListener('scroll', () => {
-
-            // })
+            this.scrollingdiv.style.height = 'calc(100% - ' + this.textAreaDiv.clientHeight + 'px)';
         }
 
         render() {
-
-            // tslint:disable:jsx-wrap-multiline
             return (
-                <>
-                {!this.state.loaded ?
-                    <CircularProgress /> : <></>}
-                <div
-                    className={this.props.classes.messageArea}
-                    ref={(e1) => { if (e1) { this.scrollingdiv = e1; } }}
-                >
-                    {this.state.messages.map((message: Message, i: number) => (
-                        <div key={i}>
-                            <MessageArea
-                                message={message}
-                                connection={this.props.connection}
+                <div className={this.props.classes.root}>
+                    <div
+                        className={this.props.classes.messageArea}
+                        ref={(e1) => { if (e1) { this.scrollingdiv = e1; } }}
+                    >
+                        {!this.state.loaded ?
+                            <CircularProgress /> : <></>}
+
+                        {this.state.messages.map((message: Message, i: number) => (
+                            <div key={i}>
+                                <MessageArea
+                                    message={message}
+                                    connection={this.props.connection}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className={this.props.classes.form} ref={e1 => { if (e1) { this.textAreaDiv = e1; } }} >
+                        <FormControl fullWidth={true}>
+                            <Input
+                                multiline={true}
+                                onKeyUp={this.handleKeyUp}
+                                placeholder="Type a message..."
+                                onChange={this.handleTextChange}
+                                onPaste={this.onPaste}
+                                endAdornment={
+                                    <IconButton onClick={this.sendMessage}>
+                                        <SendIcon />
+                                    </IconButton>}
                             />
-                        </div>
-                    ))}
+                        </FormControl>
+                    </div>
                 </div>
-                <Divider light={true} />
-                <FormControl
-                    fullWidth={true}
-                    className={this.props.classes.form}
-                >
-                    <Input
-                        onKeyUp={this.handleKeyUp}
-                        placeholder="Type a message..."
-                        onChange={this.handleTextChange}
-                        value={this.state.message}
-                        endAdornment={
-                            <IconButton onClick={this.sendMessage}>
-                                <SendIcon />
-                            </IconButton>}
-                    />
-                </FormControl>
-                </>
             );
-            // tslint:enable:jsx-wrap-multiline
         }
     }
 );

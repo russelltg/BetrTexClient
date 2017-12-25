@@ -1,7 +1,13 @@
+import { PendingImage, defaultPendingImage } from './PendingImage';
 
 interface ContactInfo {
     name: string;
-    image: string;
+    image: PendingImage;
 }
 
-export { ContactInfo };
+const defaultContactInfo: ContactInfo = {
+    name: '',
+    image: defaultPendingImage
+};
+
+export { ContactInfo, defaultContactInfo };
