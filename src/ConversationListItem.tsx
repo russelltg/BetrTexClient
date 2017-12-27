@@ -4,6 +4,7 @@ import { ConversationData } from './Conversation';
 import { ListItem, ListItemText } from 'material-ui';
 import PersonAvatar from './PersonAvatar';
 import { ContactInfo } from './ContactInfo';
+import { defaultPendingImage } from './PendingImage';
 
 interface ConversationListItemProps {
     connection: WsConnection;
@@ -25,7 +26,7 @@ export default class ConversationListItem extends
             infos: this.props.data.people.map(num => {
                 return {
                     name: num.number,
-                    image: ''
+                    image: defaultPendingImage
                 };
             })
         };

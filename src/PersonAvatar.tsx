@@ -10,7 +10,6 @@ import {
     purple, red, teal, yellow
 } from 'material-ui/colors';
 import stringHash from 'string-hash';
-import { defaultPendingImage } from './PendingImage';
 
 const colors = [
     amber, blue, cyan, deepOrange, deepPurple,
@@ -44,7 +43,7 @@ const initials = (name: string) => {
 };
 
 export default (props: Props) => {
-    if (props.info.image !== defaultPendingImage) {
+    if (props.info.image.uri !== '') {
         return (
             <FetchedImage
                 className={props.className}

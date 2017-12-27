@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Message, MmsData, SmsData } from './Message';
+import { Message, TextMessageData, ImageMessageData } from './Message';
 import { ContactInfo, defaultContactInfo } from './ContactInfo';
 import { WsConnection } from './WsConnection';
 import PersonAvatar from './PersonAvatar';
@@ -73,25 +73,23 @@ class MessageArea extends React.Component<MessageAreaParams & WithStyles<keyof t
 
         const data = this.props.message.data;
 
-        const sms = data as SmsData;
-        if (sms !== undefined) {
-            content = <Typography type="body1"><Emojify>{sms.message}</Emojify></Typography>;
-        }
-
-        const mms = data as MmsData;
-        if (mms !== undefined) {
-            if (mms.type === 'IMAGE') {
+        switch (data.type) {
+            case 'text':
+                content = <Typography type="body1"><Emojify>{(data as TextMessageData).message}</Emojify></Typography>;
+            
+                break;
+            case 'image':
                 content = (
                     <FetchedImage
                         connection={this.props.connection}
-                        image={mms.data}
+                        image={(data as ImageMessageData).image}
                         height={300}
                         type="img"
                     />
                 );
-            } else if (mms.type === 'TEXT') {
-                content = <Typography type="body1"><Emojify>{mms.data}</Emojify></Typography>;
-            }
+                break;
+            default:
+                break;
         }
 
         return (

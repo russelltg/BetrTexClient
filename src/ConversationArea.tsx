@@ -44,9 +44,12 @@ interface ConversationAreaProps {
 
 interface ConversationAreaState {
     message: string;
+    image: string;
+    image_mime: string;
     messages: Message[];
     loaded: boolean;
 }
+
 type StyleProps = WithStyles<'messageArea' | 'form' | 'root'>;
 
 const ConversationArea = withStyles(styles)<ConversationAreaProps>(
@@ -58,7 +61,7 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
         constructor(props: ConversationAreaProps & StyleProps) {
             super(props);
 
-            this.state = { message: '', messages: [], loaded: false };
+            this.state = { message: '', image: '', image_mime: '', messages: [], loaded: false };
 
         }
 
@@ -82,22 +85,68 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
         }
 
         sendMessage = () => {
-            // clear box
-            this.setState({ message: '' });
 
-            this.props.connection.sendText({
-                threadid: this.props.conversation.threadid,
-                message: {
-                    message: this.state.message
-                },
-                numbers: this.props.conversation.people.map((it) => {
-                    return it.number;
-                }),
+            const numbers = this.props.conversation.people.map((it) => {
+                return it.number;
             });
+
+            if (this.state.message !== '') {
+                this.props.connection.sendText({
+                    threadid: this.props.conversation.threadid,
+                    message: {
+                        message: this.state.message
+                    },
+                    numbers
+                });
+            }
+
+            if (this.state.image !== '') {
+                this.props.connection.sendText({
+                    threadid: this.props.conversation.threadid,
+                    message: {
+                        base64_image: this.state.image,
+                        mime_type: this.state.image_mime
+                    },
+                    numbers
+                });
+            }
+
+            // clear box
+            this.setState({ message: '', image: '' });
+
+
         }
 
-        onPaste = (e: ClipboardEvent<any>) => {
-            e.clipboardData.getData('image');
+        onPaste = (e: ClipboardEvent<HTMLDivElement>) => {
+            const items = e.clipboardData.items;
+
+            for (var index = 0; index < items.length; index++) {
+                const item = items[index];
+
+                if (item.kind === 'file' && (
+                    item.type === 'image/png' || 
+                    item.type === 'image/jpeg' || 
+                    item.type === 'image/jpg' || 
+                    item.type === 'image/bmp'
+                )) {
+
+                    const blob = item.getAsFile();
+                    if (blob === null) {
+                        continue;
+                    }
+                    const reader = new FileReader();
+
+                    reader.onload = (ev: Event) => {
+                        const data = reader.result as string;
+                        
+                        const base64Data = btoa(data);
+
+                        this.setState({'image': base64Data, image_mime: item.type});
+                    };
+
+                    reader.readAsBinaryString(blob as File);
+                }
+            }
         }
 
         handleTextChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,8 +181,8 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
                         className={this.props.classes.messageArea}
                         ref={(e1) => { if (e1) { this.scrollingdiv = e1; } }}
                     >
-                        {!this.state.loaded ?
-                            <CircularProgress /> : <></>}
+                        {!this.state.loaded ? 
+                            <CircularProgress /> : <div />}
 
                         {this.state.messages.map((message: Message, i: number) => (
                             <div key={i}>
@@ -146,6 +195,11 @@ const ConversationArea = withStyles(styles)<ConversationAreaProps>(
                     </div>
                     <div className={this.props.classes.form} ref={e1 => { if (e1) { this.textAreaDiv = e1; } }} >
                         <FormControl fullWidth={true}>
+                            {this.state.image !== '' && 
+                                <img 
+                                    src={'data:' + this.state.image_mime + ';base64, ' + this.state.image} 
+                                    width="400" 
+                                />}
                             <Input
                                 multiline={true}
                                 onKeyUp={this.handleKeyUp}

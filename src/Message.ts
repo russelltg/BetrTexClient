@@ -1,10 +1,13 @@
-interface SmsData {
+import { PendingImage } from './PendingImage';
+
+interface TextMessageData {
+    type: 'text';
     message: string;
 }
 
-interface MmsData {
-    type: string;
-    data: string;
+interface ImageMessageData {
+    type: 'image';
+    image: PendingImage;
 }
 
 interface Person {
@@ -17,7 +20,7 @@ interface Message {
     threadid: number;
     timestamp: number;
     read: boolean;
-    data: MmsData | SmsData;
+    data: TextMessageData | ImageMessageData;
 }
 
-export { SmsData, MmsData, Person, Message};
+export { TextMessageData, ImageMessageData, Person, Message};

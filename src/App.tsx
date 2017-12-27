@@ -115,7 +115,7 @@ class App extends React.Component<Props, AppState> {
 
   onConnectClick = () => {
 
-    this.connection = new WsConnection(this.ip, this.port, (connection: boolean) => {
+    this.connection = new WsConnection(this.ip, this.port, false, (connection: boolean) => {
       if (this.state.state === currentState.connecting) {
         if (connection === true) {
           this.setState({ state: currentState.authenticating });

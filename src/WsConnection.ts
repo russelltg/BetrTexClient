@@ -45,6 +45,8 @@ class WsConnection {
 
     private messageHandler: Map<number, (message: Message) => void>;
 
+    private cache: boolean;
+
     /**
      *
      * @param ip The IP address to connect to
@@ -52,7 +54,8 @@ class WsConnection {
      * @param connect Function to call when the connection is established or times out
      * @param accept Function to call when the connection is either accepted or rejected by the user
      */
-    constructor(ip: string, port: number, connect: (c: boolean) => void, accept: (a: boolean) => void) {
+    constructor(ip: string, port: number, cache: boolean, connect: (c: boolean) => void, accept: (a: boolean) => void) {
+        this.cache = cache;
         this.waitingIDs = new Map<number, (message: string) => void>();
         this.messageQueue = [];
         this.messageHandler = new Map<number, (message: Message) => void>();
@@ -137,12 +140,19 @@ class WsConnection {
      */
     getImage(imageUri: string, onreturn: (base64Data: Base64Image) => void) {
 
-        // see if it's in the cache
-        // TODO: somehow identify the phone instead of IP as IP can change
+        if (imageUri === undefined || imageUri === '') {
+            throw TypeError('getImage called with invalid uri');
+        }
+
         const key = 'bridge/image(' + encodeURIComponent(imageUri) + '):' + this.socket.url;
-        const value = localStorage.getItem(key);
-        if (value) {
-            return onreturn(JSON.parse(value));
+        
+        if (this.cache) {
+            // see if it's in the cache
+            // TODO: somehow identify the phone instead of IP as IP can change
+            const value = localStorage.getItem(key);
+            if (value) {
+                return onreturn(JSON.parse(value));
+            }
         }
         // cache entry not found
 
@@ -150,10 +160,12 @@ class WsConnection {
         this.performRequest('get-image', imageUri, (picture: Base64Image) => {
 
             // save to cache
-            try {
-                localStorage[key] = JSON.stringify(picture);
-                // tslint:disable-next-line:no-empty
-            } catch (e) { }
+            if (this.cache) {
+                try {
+                    localStorage[key] = JSON.stringify(picture);
+                    // tslint:disable-next-line:no-empty
+                } catch (e) { }
+            }
 
             onreturn(picture);
         });
@@ -175,22 +187,28 @@ class WsConnection {
             onreturn(defaultContactInfo);
             return;
         }
-
-        // see if it's in the cache
-        // TODO: somehow identify the phone instead of IP as IP can change
         const key = 'bridge/contact(' + contactID.toString() + '):' + this.socket.url;
-        const value = localStorage.getItem(key);
-        if (value) {
-            return onreturn(JSON.parse(value) as ContactInfo);
+        
+        if (this.cache) {
+            // see if it's in the cache
+            // TODO: somehow identify the phone instead of IP as IP can change
+            const value = localStorage.getItem(key);
+            if (value) {
+                return onreturn(JSON.parse(value) as ContactInfo);
+            }
+            // cache entry not found
         }
-        // cache entry not found
 
         // request
         this.performRequest('contact-info', contactID, (contact: ContactInfo) => {
 
-            // save to cache
-            localStorage[key] = JSON.stringify(contact);
-
+            if (this.cache) {
+                // save to cache
+                try {    
+                    localStorage[key] = JSON.stringify(contact);
+                // tslint:disable-next-line:no-empty
+                } catch (e) { }
+            }
             onreturn(contact);
         });
     }
