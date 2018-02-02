@@ -35,14 +35,15 @@ export default class ConversationListItem extends
     componentDidMount() {
 
         this.props.data.people.forEach((person, id) => {
-            this.props.connection.contactInfo(person.contactid, info => {
+            (async () => {
+                const info = await this.props.connection.contactInfo(person.contactid);
+
                 var infos = this.state.infos.slice();
 
                 infos[id] = info;
 
                 this.setState({ infos: infos });
-
-            });
+            })();
         });
     }
 

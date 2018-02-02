@@ -61,12 +61,9 @@ class MessageArea extends React.Component<MessageAreaParams & WithStyles<keyof t
 
   }
 
-  componentDidMount() {
-    this.props.connection.contactInfo(
-      this.props.message.person.contactid, (info: ContactInfo) => {
-        this.setState({ info: info });
-      }
-    );
+  async componentDidMount() {
+    const info = await this.props.connection.contactInfo(this.props.message.person.contactid);
+    this.setState({ info });
   }
 
   render() {

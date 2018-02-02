@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { WsConnection } from './WsConnection';
 import { Avatar } from 'material-ui';
-import { Base64Image, getImageSrc } from './Base64Image';
+import { getImageSrc } from './Base64Image';
 import { PendingImage } from './PendingImage';
 
 interface Props {
@@ -36,12 +36,11 @@ export default class FetchedImage extends React.Component<Props, State> {
 
     }
 
-    componentDidMount() {
+    async componentDidMount() {
 
         // reqest data from connection
-        this.props.connection.getImage(this.props.image.uri, (image: Base64Image) => {
-            this.setState({ src: getImageSrc(image) });
-        });
+        const image = await this.props.connection.getImage(this.props.image.uri);
+        this.setState({ src: getImageSrc(image) });
     }
 
     render() {

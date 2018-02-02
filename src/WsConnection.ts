@@ -125,20 +125,19 @@ class WsConnection {
         this.messageHandler.set(threadid, onnewmessage);
     }
 
-    listConversations(onreturn: (message: ConversationData[]) => void) {
-        this.performRequest('list-conversations', {}, onreturn);
+    async listConversations(): Promise<ConversationData[]> {
+        return this.performRequest<ConversationData[]>('list-conversations', {});
     }
 
     sendText(params: SendTextParams) {
-        this.performRequest('send-text', params, (a: {}) => { return {}; });
+        return this.performRequest('send-text', params);
     }
 
     /**
      *
      * @param imageUri The URI of the image to get. Given by `getContactInfo` or `getMessages`
-     * @param onreturn The function to call when the image has been retreived
      */
-    getImage(imageUri: string, onreturn: (base64Data: Base64Image) => void) {
+    async getImage(imageUri: string): Promise<Base64Image> {
 
         if (imageUri === undefined || imageUri === '') {
             throw TypeError('getImage called with invalid uri');
@@ -151,41 +150,38 @@ class WsConnection {
             // TODO: somehow identify the phone instead of IP as IP can change
             const value = localStorage.getItem(key);
             if (value) {
-                return onreturn(JSON.parse(value));
+                return JSON.parse(value);
             }
         }
         // cache entry not found
 
         // request
-        this.performRequest('get-image', imageUri, (picture: Base64Image) => {
+        const picture = await this.performRequest<Base64Image>('get-image', imageUri);
 
-            // save to cache
-            if (this.cache) {
-                try {
-                    localStorage[key] = JSON.stringify(picture);
-                    // tslint:disable-next-line:no-empty
-                } catch (e) { }
-            }
+        // save to cache
+        if (this.cache) {
+            try {
+                localStorage[key] = JSON.stringify(picture);
+                // tslint:disable-next-line:no-empty
+            } catch (e) { }
+        }
 
-            onreturn(picture);
-        });
+        return picture;
     }
 
-    contactInfo(contactID: number, onreturn: (info: ContactInfo) => void) {
+    async contactInfo(contactID: number): Promise<ContactInfo> {
 
         // zero means the sender is the owner of the phone
         if (contactID === 0) {
-            onreturn({
+            return {
                 name: 'Me',
                 image: defaultPendingImage
-            });
-            return;
+            };
         }
 
         // -1 means unknown
         if (contactID === -1) {
-            onreturn(defaultContactInfo);
-            return;
+            return defaultContactInfo;
         }
         const key = 'bridge/contact(' + contactID.toString() + '):' + this.socket.url;
         
@@ -194,58 +190,61 @@ class WsConnection {
             // TODO: somehow identify the phone instead of IP as IP can change
             const value = localStorage.getItem(key);
             if (value) {
-                return onreturn(JSON.parse(value) as ContactInfo);
+                return JSON.parse(value) as ContactInfo;
             }
             // cache entry not found
         }
 
         // request
-        this.performRequest('contact-info', contactID, (contact: ContactInfo) => {
+        const contact = await this.performRequest<ContactInfo>('contact-info', contactID);
 
-            if (this.cache) {
-                // save to cache
-                try {    
-                    localStorage[key] = JSON.stringify(contact);
-                // tslint:disable-next-line:no-empty
-                } catch (e) { }
-            }
-            onreturn(contact);
-        });
+        if (this.cache) {
+            // save to cache
+            try {    
+                localStorage[key] = JSON.stringify(contact);
+            // tslint:disable-next-line:no-empty
+            } catch (e) { }
+        }
+        return contact;
     }
 
-    getMessages(threadID: number, from: number, to: number, onreturn: (info: Message[]) => void) {
-        this.performRequest('get-messages', {
+    async getMessages(threadID: number, from: number, to: number): Promise<Message[]> {
+        return this.performRequest<Message[]>('get-messages', {
             threadid: threadID,
             from: from,
             to: to
-        }, onreturn);
+        });
     }
 
-    private performRequest<T, U>(method: string, params: U, onreturn: (message: T) => void) {
+    private async performRequest<T>(method: string, params: any): Promise<T> {
 
         const thisID = this.nextID++;
 
-        this.waitingIDs.set(thisID, (result: string) => {
-            let parsed = JSON.parse(result);
-            if ((parsed as T) !== undefined) {
-                onreturn(parsed as T);
+        return new Promise<T>((resolve, reject) => {
+
+            this.waitingIDs.set(thisID, (result: string) => {
+                let parsed = JSON.parse(result);
+                if ((parsed as T) !== undefined) {
+                    resolve(parsed as T);
+                }
+            });
+    
+            // start the request
+            var messageObject = {
+                jsonrpc: 2,
+                id: thisID,
+                method: method,
+                params: params
+            };
+    
+            const stringMessage = JSON.stringify(messageObject);
+            if (this.socket.readyState !== WebSocket.OPEN) {
+                this.messageQueue.push(stringMessage);
+            } else {
+                this.socket.send(stringMessage);
             }
         });
 
-        // start the request
-        var messageObject = {
-            jsonrpc: 2,
-            id: thisID,
-            method: method,
-            params: params
-        };
-
-        const stringMessage = JSON.stringify(messageObject);
-        if (this.socket.readyState !== WebSocket.OPEN) {
-            this.messageQueue.push(stringMessage);
-        } else {
-            this.socket.send(stringMessage);
-        }
     }
 
 }

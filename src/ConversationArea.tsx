@@ -65,17 +65,21 @@ const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<Conversa
 
     }
 
-    componentWillMount() {
-
-      this.props.connection.getMessages(
+    async loadMessages() {
+      
+      const messages = await this.props.connection.getMessages(
         this.props.conversation.threadid,
         Math.max(0, this.props.conversation.messagecount - 20), // get last 10 messages
-        this.props.conversation.messagecount,
-        (messages: Message[]) => {
-          this.setState({ messages: messages, loaded: true });
+        this.props.conversation.messagecount);
+      
+      this.setState({ messages: messages, loaded: true });
 
-          this.scrollToBottom();
-        });
+      this.scrollToBottom();
+    }
+
+    componentWillMount() {
+
+      this.loadMessages();
 
       this.props.connection.registerThreadID(this.props.conversation.threadid, (message: Message) => {
         this.setState({ messages: [...this.state.messages, message] });

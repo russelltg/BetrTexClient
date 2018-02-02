@@ -77,13 +77,11 @@ class App extends React.Component<Props, AppState> {
 
   }
 
-  onConnected = (conn: WsConnection) => {
+  onConnected = async (conn: WsConnection) => {
     this.connection = conn;
 
     // fetch the conversations
-    this.connection.listConversations((datas: ConversationData[]) => {
-      this.setState({ conversations: datas });
-    });
+    this.setState({ conversations: await this.connection.listConversations() });
   }
 
   onSelectConversation = (threadID: number) => {
