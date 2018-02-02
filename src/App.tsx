@@ -3,14 +3,13 @@ import * as React from 'react';
 import { WsConnection } from './WsConnection';
 import { ConversationsList } from './ConversationsList';
 import { ConversationArea } from './ConversationArea';
+import { ConnectDialog } from './ConnectDialog';
 import { ConversationData } from './Conversation';
 import Options from './Options';
 import {
-  AppBar, Typography, Toolbar, Drawer, Dialog,
-  DialogTitle, TextField, Stepper, StepLabel, Button, Step,
-  DialogContent, withStyles, CircularProgress, MenuItem, createMuiTheme
+  AppBar, Typography, Toolbar, Drawer, 
+  withStyles, MenuItem, createMuiTheme
 } from 'material-ui';
-import WarningIcon from 'material-ui-icons/Warning';
 import { WithStyles } from 'material-ui/styles/withStyles';
 import IconButton from 'material-ui/IconButton/IconButton';
 import MoreVertIcon from 'material-ui-icons/MoreVert';
@@ -18,20 +17,11 @@ import Menu from 'material-ui/Menu/Menu';
 import { MouseEvent } from 'react';
 import { Theme, MuiThemeProvider, StyleRules } from 'material-ui/styles';
 
-const drawerWidth = '25%';
-
-enum currentState {
-  enteringAddress,
-  connecting,
-  authenticating,
-  using,
-}
+const drawerWidth = '400px';
 
 interface AppState {
   conversations: ConversationData[];
   currentThread: number;
-  state: currentState;
-  failed: boolean;
   anchorEl?: HTMLElement;
   theme: Theme;
   optionsOpen: boolean;
@@ -49,11 +39,6 @@ const styles: StyleRules = {
     height: 'calc(100% - 64px)',
     left: drawerWidth
   },
-  progress: {
-    verticalAlign: 'middle',
-    right: 0,
-    position: 'relative'
-  } as React.CSSProperties
 };
 
 type Props = WithStyles<keyof typeof styles>;
@@ -62,9 +47,6 @@ class App extends React.Component<Props, AppState> {
 
   connection: WsConnection;
   areas: Map<number, JSX.Element>;
-
-  ip: string = '10.0.0.9';
-  port: number = 14563;
 
   darkTheme: Theme;
   lightTheme: Theme;
@@ -89,12 +71,19 @@ class App extends React.Component<Props, AppState> {
     this.state = {
       conversations: [],
       currentThread: -1,
-      state: currentState.enteringAddress,
-      failed: false,
       theme: this.lightTheme,
       optionsOpen: false,
     };
 
+  }
+
+  onConnected = (conn: WsConnection) => {
+    this.connection = conn;
+
+    // fetch the conversations
+    this.connection.listConversations((datas: ConversationData[]) => {
+      this.setState({ conversations: datas });
+    });
   }
 
   onSelectConversation = (threadID: number) => {
@@ -103,47 +92,6 @@ class App extends React.Component<Props, AppState> {
     this.setState({ currentThread: threadID });
 
     return a;
-  }
-
-  onIpChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    this.ip = evt.target.value;
-  }
-
-  onPortChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    this.port = +evt.target.value;
-  }
-
-  onConnectClick = () => {
-
-    this.connection = new WsConnection(this.ip, this.port, false, (connection: boolean) => {
-      if (this.state.state === currentState.connecting) {
-        if (connection === true) {
-          this.setState({ state: currentState.authenticating });
-        } else {
-          this.setState({ failed: true });
-        }
-      }
-    }, (state: boolean) => {
-      if (this.state.state === currentState.authenticating) {
-        if (state === true) {
-          this.setState({ state: currentState.using });
-
-          // fetch the conversations
-          this.connection.listConversations((datas: ConversationData[]) => {
-            this.setState({ conversations: datas });
-          });
-
-        } else {
-          this.setState({ failed: true });
-        }
-      }
-    });
-
-    this.setState({ state: currentState.connecting });
-  }
-
-  onRestartConnect = () => {
-    this.setState({ failed: false, state: currentState.enteringAddress });
   }
 
   onMenuClick = (action: MouseEvent<HTMLElement>) => {
@@ -166,101 +114,24 @@ class App extends React.Component<Props, AppState> {
     this.setState({ optionsOpen: true });
   }
 
-  conversationArea = (threadID: number) => {
-    // if (this.areas.has(threadID)) {
-    //   return this.areas.get(threadID);
-    // }
+  render() {
 
-    // get conversation data for state.currentThread
     var convData: ConversationData | undefined;
     this.state.conversations.forEach(element => {
-      if (element.threadid === threadID) {
+      if (element.threadid === this.state.currentThread) {
         convData = element;
         return;
       }
     });
-
-    const conversationArea = convData ?
-      (
-        <div className={this.props.classes.area}>
-          <ConversationArea
-            connection={this.connection}
-            conversation={convData}
-          />
-        </div>
-      ) : <></>;
-
-    this.areas.set(threadID, conversationArea);
-
-    return conversationArea;
-
-  }
-
-  render() {
-
-    const conversationArea =
-      this.state.state === currentState.using ? this.conversationArea(this.state.currentThread) : <></>;
-
-    var stepperContent = <></>;
-    switch (this.state.state) {
-      case currentState.enteringAddress: {
-        stepperContent = (
-          <div>
-            <TextField
-              autoFocus={true}
-              margin="dense"
-              label="IP"
-              fullWidth={true}
-              defaultValue={this.ip}
-              onChange={this.onIpChange}
-            />
-            <TextField
-              margin="dense"
-              label="Port"
-              fullWidth={true}
-              defaultValue={this.port.toString()}
-              onChange={this.onPortChange}
-            />
-            <Button onClick={this.onConnectClick}>
-              Connect
-            </Button>
-          </div>
-        );
-        break;
-      }
-      case currentState.connecting: {
-        stepperContent = (
-          <div>
-            Connecting to {this.ip}:{this.port}
-            {this.state.failed ?
-              <>
-              <WarningIcon color="red" />
-              <Button onClick={this.onRestartConnect}>Restart</Button>
-              </>
-              :
-              <CircularProgress className={this.props.classes.progress} />
-            }
-          </div>
-        );
-        break;
-      }
-      case currentState.authenticating: {
-        stepperContent = (
-          <div>
-            Waiting for authentication. Go to your device and select <strong>Accept</strong>
-            {this.state.failed ?
-              <>
-              <WarningIcon color="red" />
-              <Button onClick={this.onRestartConnect}>Restart</Button>
-              </> :
-              <CircularProgress className={this.props.classes.progress} />
-            }
-          </div>
-        );
-        break;
-      }
-      default: break;
-    }
+    
+    const conversation = convData === undefined ? <></> : (
+      <div className={this.props.classes.area}>
+        <ConversationArea
+          connection={this.connection}
+          conversation={convData}
+        />
+      </div>
+    );
 
     const open = this.state.anchorEl !== undefined;
 
@@ -273,25 +144,7 @@ class App extends React.Component<Props, AppState> {
           onRequestClose={this.onRequestOptionsClose}
           onChange={this.onThemeChange}
         />
-        <Dialog open={this.state.state !== currentState.using}>
-          <DialogTitle>
-            Acquiring connection...
-          </DialogTitle>
-          <DialogContent>
-            <Stepper activeStep={this.state.state}>
-              <Step key={currentState.enteringAddress}>
-                <StepLabel>Enter IP and port</StepLabel>
-              </Step>
-              <Step key={currentState.connecting} >
-                <StepLabel>Connect</StepLabel>
-              </Step>
-              <Step key={currentState.authenticating}>
-                <StepLabel>Authenticate</StepLabel>
-              </Step>
-            </Stepper>
-            {stepperContent}
-          </DialogContent>
-        </Dialog>
+        <ConnectDialog connected={this.onConnected}/>
         <AppBar position="static" color="primary">
           <Toolbar>
             <Typography type="title" color="inherit">
@@ -317,14 +170,14 @@ class App extends React.Component<Props, AppState> {
           </Toolbar>
         </AppBar>
         <Drawer type="permanent" classes={{ paper: this.props.classes.drawerPaper }}>
-          {this.state.state === currentState.using ? <ConversationsList
+          {this.connection !== null ? <ConversationsList
             connection={this.connection}
             conversations={this.state.conversations}
             onSelect={this.onSelectConversation}
           /> : <></>
           }
         </Drawer>
-        {conversationArea}
+        {conversation}
       </MuiThemeProvider>
     );
   }
