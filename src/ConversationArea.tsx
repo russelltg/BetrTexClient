@@ -3,7 +3,7 @@ import { ConversationData } from './Conversation';
 import MessageArea from './MessageArea';
 import { Message } from './Message';
 import { WsConnection } from './WsConnection';
-import { IconButton, withStyles, Input } from 'material-ui';
+import { IconButton, withStyles, Input, Button } from 'material-ui';
 import SendIcon from 'material-ui-icons/Send';
 import CircularProgress from 'material-ui/Progress/CircularProgress';
 import { StyleRulesCallback, WithStyles } from 'material-ui/styles/withStyles';
@@ -52,34 +52,39 @@ interface ConversationAreaState {
 
 type StyleProps = WithStyles<'messageArea' | 'form' | 'root'>;
 
-const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<ConversationAreaProps>(
-  class extends React.Component<ConversationAreaProps & StyleProps, ConversationAreaState> {
+const ConversationArea = withStyles(styles, { name: 'ConversationArea' })<ConversationAreaProps>(
+  class ConversationAreaImpl extends React.Component<ConversationAreaProps & StyleProps, ConversationAreaState> {
 
     scrollingdiv: HTMLDivElement;
     textAreaDiv: HTMLDivElement;
+
+    firstMessage: number;
 
     constructor(props: ConversationAreaProps & StyleProps) {
       super(props);
 
       this.state = { message: '', image: '', image_mime: '', messages: [], loaded: false };
+      this.firstMessage = props.conversation.messagecount;
 
     }
 
-    async loadMessages() {
-      
-      const messages = await this.props.connection.getMessages(
-        this.props.conversation.threadid,
-        Math.max(0, this.props.conversation.messagecount - 20), // get last 10 messages
-        this.props.conversation.messagecount);
-      
-      this.setState({ messages: messages, loaded: true });
+    loadMessages = async () => {
 
-      this.scrollToBottom();
+      const lastMessageToLoad = this.firstMessage;
+      this.firstMessage = Math.max(0, this.firstMessage - 20);
+
+      const messages = await this.props.connection.getMessages(
+        this.props.conversation.threadid, this.firstMessage, lastMessageToLoad);
+
+      this.setState({ messages: [...messages, ...this.state.messages], loaded: true });
+
     }
 
     componentWillMount() {
 
-      this.loadMessages();
+      this.loadMessages().then(() => {
+        this.scrollToBottom();
+      });
 
       this.props.connection.registerThreadID(this.props.conversation.threadid, (message: Message) => {
         this.setState({ messages: [...this.state.messages, message] });
@@ -127,9 +132,9 @@ const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<Conversa
         const item = items[index];
 
         if (item.kind === 'file' && (
-          item.type === 'image/png' || 
-          item.type === 'image/jpeg' || 
-          item.type === 'image/jpg' || 
+          item.type === 'image/png' ||
+          item.type === 'image/jpeg' ||
+          item.type === 'image/jpg' ||
           item.type === 'image/bmp'
         )) {
 
@@ -141,10 +146,10 @@ const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<Conversa
 
           reader.onload = (ev: Event) => {
             const data = reader.result as string;
-            
+
             const base64Data = btoa(data);
 
-            this.setState({'image': base64Data, image_mime: item.type});
+            this.setState({ 'image': base64Data, image_mime: item.type });
           };
 
           reader.readAsBinaryString(blob as File);
@@ -184,8 +189,11 @@ const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<Conversa
             className={this.props.classes.messageArea}
             ref={(e1) => { if (e1) { this.scrollingdiv = e1; } }}
           >
-            {!this.state.loaded ? 
-              <CircularProgress /> : <div />}
+            {!this.state.loaded &&
+              <CircularProgress />}
+
+            {this.firstMessage !== 0 &&
+              <Button onClick={this.loadMessages}>Load More</Button>}
 
             {this.state.messages.map((message: Message, i: number) => (
               <MessageArea
@@ -197,10 +205,10 @@ const ConversationArea = withStyles(styles, {name: 'ConversationArea'})<Conversa
           </div>
           <div className={this.props.classes.form} ref={e1 => { if (e1) { this.textAreaDiv = e1; } }} >
             <FormControl fullWidth={true}>
-              {this.state.image !== '' && 
-                <img 
-                  src={'data:' + this.state.image_mime + ';base64, ' + this.state.image} 
-                  width="400" 
+              {this.state.image !== '' &&
+                <img
+                  src={'data:' + this.state.image_mime + ';base64, ' + this.state.image}
+                  width="400"
                 />}
               <Input
                 multiline={true}
